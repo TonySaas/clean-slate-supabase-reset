@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,29 +8,55 @@ import { OrganizationList } from '@/components/organization/OrganizationList';
 import { OrganizationForm } from '@/components/organization/OrganizationForm';
 import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
 import { OrganizationRules } from '@/components/organization/OrganizationRules';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/components/ui/toast";
 
-// Dummy data for organizations 
-const dummyOrganizations = [
-  { id: 1, name: 'Toolbank', logo: '/placeholder.svg', primaryColor: '#0066CC', membersCount: 245, offersCount: 32 },
-  { id: 2, name: 'NMBS', logo: '/placeholder.svg', primaryColor: '#FF4500', membersCount: 178, offersCount: 27 },
-  { id: 3, name: 'IBC', logo: '/placeholder.svg', primaryColor: '#008000', membersCount: 132, offersCount: 18 },
-  { id: 4, name: 'BMF', logo: '/placeholder.svg', primaryColor: '#800080', membersCount: 98, offersCount: 15 },
-];
+type Organization = {
+  id: string;
+  name: string;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  domain?: string | null;
+};
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
-  const [selectedOrganization, setSelectedOrganization] = useState(dummyOrganizations[0]);
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const handleOrganizationSelect = (org: typeof dummyOrganizations[0]) => {
+  const { data: organizations = [], isLoading, error } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*');
+      
+      if (error) {
+        toast({
+          title: "Error fetching organizations",
+          description: error.message,
+          variant: "destructive"
+        });
+        throw error;
+      }
+      
+      return data as Organization[];
+    }
+  });
+
+  const handleOrganizationSelect = (org: Organization) => {
     setSelectedOrganization(org);
     setActiveTab("details");
   };
 
   const handleCreateNew = () => {
+    setSelectedOrganization(null);
     setIsEditMode(true);
     setActiveTab("details");
   };
+
+  if (isLoading) return <div>Loading organizations...</div>;
+  if (error) return <div>Error loading organizations</div>;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -46,7 +72,7 @@ const OrganizationManagement = () => {
             <CardDescription>Total registered</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{dummyOrganizations.length}</div>
+            <div className="text-3xl font-bold">{organizations.length}</div>
           </CardContent>
         </Card>
 
@@ -57,7 +83,7 @@ const OrganizationManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {dummyOrganizations.reduce((sum, org) => sum + org.membersCount, 0)}
+              {organizations.reduce((sum, org) => sum + org.membersCount, 0)}
             </div>
           </CardContent>
         </Card>
@@ -69,7 +95,7 @@ const OrganizationManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {dummyOrganizations.reduce((sum, org) => sum + org.offersCount, 0)}
+              {organizations.reduce((sum, org) => sum + org.offersCount, 0)}
             </div>
           </CardContent>
         </Card>
@@ -100,7 +126,14 @@ const OrganizationManagement = () => {
         
         <TabsContent value="organizations">
           <OrganizationList 
-            organizations={dummyOrganizations} 
+            organizations={organizations.map(org => ({
+              id: org.id,
+              name: org.name,
+              logo: org.logo_url || '/placeholder.svg',
+              primaryColor: org.primary_color || '#0066CC',
+              membersCount: 0,
+              offersCount: 0,
+            }))} 
             onSelect={handleOrganizationSelect} 
             onCreateNew={handleCreateNew}
           />
@@ -108,7 +141,14 @@ const OrganizationManagement = () => {
         
         <TabsContent value="details">
           <OrganizationForm 
-            organization={selectedOrganization} 
+            organization={selectedOrganization ? {
+              id: selectedOrganization.id,
+              name: selectedOrganization.name,
+              logo: selectedOrganization.logo_url || '/placeholder.svg',
+              primaryColor: selectedOrganization.primary_color || '#0066CC',
+              membersCount: 0,
+              offersCount: 0,
+            } : null} 
             isEditMode={isEditMode} 
             onSave={() => setIsEditMode(false)}
             onCancel={() => {
@@ -119,11 +159,29 @@ const OrganizationManagement = () => {
         </TabsContent>
         
         <TabsContent value="branding">
-          <OrganizationBranding organization={selectedOrganization} />
+          <OrganizationBranding 
+            organization={selectedOrganization ? {
+              id: selectedOrganization.id,
+              name: selectedOrganization.name,
+              logo: selectedOrganization.logo_url || '/placeholder.svg',
+              primaryColor: selectedOrganization.primary_color || '#0066CC',
+              membersCount: 0,
+              offersCount: 0,
+            } : null} 
+          />
         </TabsContent>
         
         <TabsContent value="rules">
-          <OrganizationRules organization={selectedOrganization} />
+          <OrganizationRules 
+            organization={selectedOrganization ? {
+              id: selectedOrganization.id,
+              name: selectedOrganization.name,
+              logo: selectedOrganization.logo_url || '/placeholder.svg',
+              primaryColor: selectedOrganization.primary_color || '#0066CC',
+              membersCount: 0,
+              offersCount: 0,
+            } : null} 
+          />
         </TabsContent>
       </Tabs>
     </div>
