@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Building, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Define the UIOrganization interface to be used in the component
 export interface UIOrganization {
   id: string;
   name: string;
@@ -26,6 +25,18 @@ export const OrganizationList: React.FC<OrganizationListProps> = ({
   onSelect,
   onCreateNew
 }) => {
+  const getDefaultLogo = (orgName: string) => {
+    // Use the first letter of the organization name as a default "logo"
+    return `data:image/svg+xml,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <rect width="40" height="40" fill="#E0E0E0" />
+        <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="20" fill="#333">
+          ${orgName.charAt(0).toUpperCase()}
+        </text>
+      </svg>
+    `)}`;
+  };
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -53,7 +64,15 @@ export const OrganizationList: React.FC<OrganizationListProps> = ({
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     <div className="w-8 h-8 rounded-md overflow-hidden mr-3 bg-gray-100 flex items-center justify-center">
-                      <img src={org.logo} alt={org.name} className="w-6 h-6" />
+                      <img 
+                        src={org.logo || getDefaultLogo(org.name)} 
+                        alt={`${org.name} logo`} 
+                        className="w-6 h-6 object-contain" 
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = getDefaultLogo(org.name);
+                        }}
+                      />
                     </div>
                     {org.name}
                   </div>
