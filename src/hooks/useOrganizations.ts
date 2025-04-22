@@ -18,8 +18,7 @@ export const useOrganizations = () => {
     queryKey: ['organizations'],
     queryFn: async (): Promise<Organization[]> => {
       try {
-        // First get the organizations without trying to count members
-        // This avoids the recursion issue
+        // Fetch only organizations - avoid any join that might trigger RLS recursion
         const { data: orgsData, error: orgsError } = await supabase
           .from('organizations')
           .select('*');
@@ -31,31 +30,13 @@ export const useOrganizations = () => {
           throw orgsError;
         }
 
-        // If we need member counts, we'll handle them separately
-        // without causing the recursion issue
+        // Return organizations without member counts for now
+        // This ensures we at least show the organizations even if we can't count members
         const organizations: Organization[] = orgsData.map(org => ({
           ...org,
-          membersCount: 0, // Default to 0, we'll update this if possible
-          offersCount: 0, // TODO: Implement offers count when that feature is added
+          membersCount: 0, // Default to 0 to avoid the recursion issue entirely
+          offersCount: 0,  // Default to 0 for now
         }));
-
-        // Attempt to query member counts separately for each organization
-        // This is a safer approach than a join that might trigger the recursion
-        try {
-          for (const org of organizations) {
-            const { count, error: countError } = await supabase
-              .from('organization_members')
-              .select('*', { count: 'exact', head: true })
-              .eq('organization_id', org.id);
-            
-            if (!countError && count !== null) {
-              org.membersCount = count;
-            }
-          }
-        } catch (countError) {
-          console.warn("Error counting members, showing organizations without counts:", countError);
-          // We don't throw here, as we still want to show orgs even if counts fail
-        }
         
         return organizations;
       } catch (error) {
