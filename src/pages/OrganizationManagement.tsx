@@ -9,6 +9,8 @@ import { OrganizationForm } from '@/components/organization/OrganizationForm';
 import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
 import { OrganizationRules } from '@/components/organization/OrganizationRules';
 import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
@@ -40,8 +42,17 @@ const OrganizationManagement = () => {
     setActiveTab("details");
   };
 
-  if (isLoading) return <div>Loading organizations...</div>;
-  if (error) return <div>Error loading organizations</div>;
+  if (isLoading) return <div className="container mx-auto px-4 py-8">Loading organizations...</div>;
+  
+  if (error) return (
+    <div className="container mx-auto px-4 py-8">
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Failed to load organizations. Please try again later.</AlertDescription>
+      </Alert>
+    </div>
+  );
 
   const uiOrganizations = organizations.map(mapToUIOrganization);
 
