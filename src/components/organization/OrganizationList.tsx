@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Building, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-interface Organization {
-  id: number;
+// Define the UIOrganization interface to be used in the component
+export interface UIOrganization {
+  id: string;
   name: string;
   logo: string;
   primaryColor: string;
@@ -15,8 +16,8 @@ interface Organization {
 }
 
 interface OrganizationListProps {
-  organizations: Organization[];
-  onSelect: (organization: Organization) => void;
+  organizations: UIOrganization[];
+  onSelect: (organization: UIOrganization) => void;
   onCreateNew: () => void;
 }
 

@@ -4,21 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Building } from "lucide-react";
-import { OrganizationList } from '@/components/organization/OrganizationList';
+import { OrganizationList, UIOrganization } from '@/components/organization/OrganizationList';
 import { OrganizationForm } from '@/components/organization/OrganizationForm';
 import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
 import { OrganizationRules } from '@/components/organization/OrganizationRules';
 import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
-
-// Define a type for the organization expected by the UI components
-interface UIOrganization {
-  id: string;
-  name: string;
-  logo: string;
-  primaryColor: string;
-  membersCount: number;
-  offersCount: number;
-}
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
@@ -130,27 +120,56 @@ const OrganizationManagement = () => {
         </TabsContent>
         
         <TabsContent value="details">
-          <OrganizationForm 
-            organization={selectedOrganization ? mapToUIOrganization(selectedOrganization) : null} 
-            isEditMode={isEditMode} 
-            onSave={() => setIsEditMode(false)}
-            onCancel={() => {
-              setIsEditMode(false);
-              setActiveTab("organizations");
-            }}
-          />
+          {selectedOrganization && (
+            <OrganizationForm 
+              organization={mapToUIOrganization(selectedOrganization)} 
+              isEditMode={isEditMode} 
+              onSave={() => setIsEditMode(false)}
+              onCancel={() => {
+                setIsEditMode(false);
+                setActiveTab("organizations");
+              }}
+            />
+          )}
+          {!selectedOrganization && isEditMode && (
+            <OrganizationForm 
+              organization={null} 
+              isEditMode={true} 
+              onSave={() => setIsEditMode(false)}
+              onCancel={() => {
+                setIsEditMode(false);
+                setActiveTab("organizations");
+              }}
+            />
+          )}
         </TabsContent>
         
         <TabsContent value="branding">
-          <OrganizationBranding 
-            organization={selectedOrganization ? mapToUIOrganization(selectedOrganization) : null} 
-          />
+          {selectedOrganization && (
+            <OrganizationBranding 
+              organization={mapToUIOrganization(selectedOrganization)} 
+            />
+          )}
+          {!selectedOrganization && (
+            <div className="text-center p-8">
+              <h3 className="text-lg font-medium">No organization selected</h3>
+              <p className="text-gray-500">Please select an organization to manage branding</p>
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="rules">
-          <OrganizationRules 
-            organization={selectedOrganization ? mapToUIOrganization(selectedOrganization) : null} 
-          />
+          {selectedOrganization && (
+            <OrganizationRules 
+              organization={mapToUIOrganization(selectedOrganization)} 
+            />
+          )}
+          {!selectedOrganization && (
+            <div className="text-center p-8">
+              <h3 className="text-lg font-medium">No organization selected</h3>
+              <p className="text-gray-500">Please select an organization to manage rules</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
