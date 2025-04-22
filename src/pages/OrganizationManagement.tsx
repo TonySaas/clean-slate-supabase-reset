@@ -1,48 +1,20 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Building, Database, Users } from "lucide-react";
+import { Building } from "lucide-react";
 import { OrganizationList } from '@/components/organization/OrganizationList';
 import { OrganizationForm } from '@/components/organization/OrganizationForm';
 import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
 import { OrganizationRules } from '@/components/organization/OrganizationRules';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from "@/components/ui/toast";
-
-type Organization = {
-  id: string;
-  name: string;
-  logo_url?: string | null;
-  primary_color?: string | null;
-  domain?: string | null;
-};
+import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const { data: organizations = [], isLoading, error } = useQuery({
-    queryKey: ['organizations'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*');
-      
-      if (error) {
-        toast({
-          title: "Error fetching organizations",
-          description: error.message,
-          variant: "destructive"
-        });
-        throw error;
-      }
-      
-      return data as Organization[];
-    }
-  });
+  const { data: organizations = [], isLoading, error } = useOrganizations();
 
   const handleOrganizationSelect = (org: Organization) => {
     setSelectedOrganization(org);
@@ -83,7 +55,7 @@ const OrganizationManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {organizations.reduce((sum, org) => sum + org.membersCount, 0)}
+              {organizations.reduce((sum, org) => sum + (org.membersCount || 0), 0)}
             </div>
           </CardContent>
         </Card>
@@ -95,7 +67,7 @@ const OrganizationManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {organizations.reduce((sum, org) => sum + org.offersCount, 0)}
+              {organizations.reduce((sum, org) => sum + (org.offersCount || 0), 0)}
             </div>
           </CardContent>
         </Card>
@@ -131,8 +103,8 @@ const OrganizationManagement = () => {
               name: org.name,
               logo: org.logo_url || '/placeholder.svg',
               primaryColor: org.primary_color || '#0066CC',
-              membersCount: 0,
-              offersCount: 0,
+              membersCount: org.membersCount || 0,
+              offersCount: org.offersCount || 0,
             }))} 
             onSelect={handleOrganizationSelect} 
             onCreateNew={handleCreateNew}
@@ -146,8 +118,8 @@ const OrganizationManagement = () => {
               name: selectedOrganization.name,
               logo: selectedOrganization.logo_url || '/placeholder.svg',
               primaryColor: selectedOrganization.primary_color || '#0066CC',
-              membersCount: 0,
-              offersCount: 0,
+              membersCount: selectedOrganization.membersCount || 0,
+              offersCount: selectedOrganization.offersCount || 0,
             } : null} 
             isEditMode={isEditMode} 
             onSave={() => setIsEditMode(false)}
@@ -165,8 +137,8 @@ const OrganizationManagement = () => {
               name: selectedOrganization.name,
               logo: selectedOrganization.logo_url || '/placeholder.svg',
               primaryColor: selectedOrganization.primary_color || '#0066CC',
-              membersCount: 0,
-              offersCount: 0,
+              membersCount: selectedOrganization.membersCount || 0,
+              offersCount: selectedOrganization.offersCount || 0,
             } : null} 
           />
         </TabsContent>
@@ -178,8 +150,8 @@ const OrganizationManagement = () => {
               name: selectedOrganization.name,
               logo: selectedOrganization.logo_url || '/placeholder.svg',
               primaryColor: selectedOrganization.primary_color || '#0066CC',
-              membersCount: 0,
-              offersCount: 0,
+              membersCount: selectedOrganization.membersCount || 0,
+              offersCount: selectedOrganization.offersCount || 0,
             } : null} 
           />
         </TabsContent>

@@ -1,0 +1,42 @@
+
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+export interface Organization {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  domain: string | null;
+  membersCount?: number;
+  offersCount?: number;
+}
+
+export const useOrganizations = () => {
+  return useQuery({
+    queryKey: ['organizations'],
+    queryFn: async (): Promise<Organization[]> => {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select(`
+          *,
+          organization_members(count)
+        `);
+      
+      if (error) {
+        toast.error("Error fetching organizations", {
+          description: error.message
+        });
+        throw error;
+      }
+      
+      // Transform the data to include member counts
+      return (data || []).map(org => ({
+        ...org,
+        membersCount: 0, // TODO: Implement actual count from organization_members
+        offersCount: 0, // TODO: Implement offers count when that feature is added
+      }));
+    }
+  });
+};
