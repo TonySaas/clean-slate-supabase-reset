@@ -1,10 +1,13 @@
-import React from 'react';
+
+import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Building, Save, X } from "lucide-react";
+import { Building, Save, X, Upload } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { UIOrganization } from './OrganizationList';
+import { useToast } from "@/hooks/use-toast";
 
 interface OrganizationFormProps {
   organization: UIOrganization | null;
@@ -20,7 +23,74 @@ export const OrganizationForm: React.FC<OrganizationFormProps> = ({
   onCancel
 }) => {
   const isNewOrg = !organization?.id;
-  
+  const [logoUrl, setLogoUrl] = useState<string | null>(organization?.logo || null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { toast } = useToast();
+
+  // Handle clicking the Upload Logo button
+  const handleUploadButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // File upload handler
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      // Use org id if editing, otherwise use temporary name (client-only!)
+      const orgId = organization?.id ?? `new-${Date.now()}`;
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${orgId}.${fileExt}`;
+
+      // Upload to Supabase storage
+      const { data, error } = await supabase.storage
+        .from("organization-logos")
+        .upload(filePath, file, { upsert: true });
+
+      if (error) {
+        toast({
+          title: "Upload failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        setUploading(false);
+        return;
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabase
+        .storage
+        .from("organization-logos")
+        .getPublicUrl(filePath);
+
+      if (!publicUrlData?.publicUrl) {
+        toast({
+          title: "Could not get logo URL",
+          variant: "destructive",
+        });
+      } else {
+        setLogoUrl(publicUrlData.publicUrl);
+        toast({
+          title: "Logo uploaded!",
+          description: "Logo has been successfully uploaded.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error uploading logo",
+        description: err.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset input so you can upload the same file again if needed
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -63,17 +133,33 @@ export const OrganizationForm: React.FC<OrganizationFormProps> = ({
             <Label htmlFor="logo">Organization Logo</Label>
             <div className="flex items-center space-x-4">
               <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                {organization?.logo ? (
+                {logoUrl ? (
                   <img 
-                    src={organization.logo} 
-                    alt={organization.name || 'Organization logo'} 
+                    src={logoUrl} 
+                    alt={organization?.name || 'Organization logo'} 
                     className="max-w-full max-h-full p-2" 
                   />
                 ) : (
                   <Building className="h-10 w-10 text-gray-400" />
                 )}
               </div>
-              <Button variant="outline" type="button">Upload Logo</Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={handleUploadButtonClick}
+                disabled={uploading}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {uploading ? "Uploading..." : "Upload Logo"}
+              </Button>
             </div>
             <p className="text-sm text-gray-500">
               Recommended size: 512x512px. PNG or SVG format.
