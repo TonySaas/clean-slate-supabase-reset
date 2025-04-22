@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,8 @@ export interface UIOrganization {
   primaryColor: string;
   membersCount: number;
   offersCount: number;
+  domain?: string;
+  adminEmail?: string;
 }
 
 interface OrganizationListProps {

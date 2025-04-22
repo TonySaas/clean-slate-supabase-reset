@@ -24,6 +24,8 @@ const OrganizationManagement = () => {
     primaryColor: org.primary_color || '#0066CC',
     membersCount: org.membersCount || 0,
     offersCount: org.offersCount || 0,
+    domain: '',       // Initialize with empty string
+    adminEmail: '',   // Initialize with empty string
   });
 
   const handleOrganizationSelect = (uiOrg: UIOrganization) => {
