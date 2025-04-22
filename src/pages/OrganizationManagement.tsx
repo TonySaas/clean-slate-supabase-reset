@@ -1,15 +1,11 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Building, AlertTriangle, PlusCircle } from "lucide-react";
-import { OrganizationList, UIOrganization } from '@/components/organization/OrganizationList';
-import { OrganizationForm } from '@/components/organization/OrganizationForm';
-import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
-import { OrganizationRules } from '@/components/organization/OrganizationRules';
-import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
+import { OrganizationStatsCards } from '@/components/organization/OrganizationStatsCards';
+import { OrganizationTabs } from '@/components/organization/OrganizationTabs';
+import { UIOrganization } from '@/components/organization/OrganizationList';
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
@@ -17,8 +13,6 @@ const OrganizationManagement = () => {
   const [isEditMode, setIsEditMode] = useState(false);
 
   const { data: organizations = [], isLoading, error } = useOrganizations();
-
-  console.log('Organizations loaded in component:', organizations);
 
   // Convert Organization to UIOrganization format
   const mapToUIOrganization = (org: Organization): UIOrganization => ({
@@ -31,7 +25,6 @@ const OrganizationManagement = () => {
   });
 
   const handleOrganizationSelect = (uiOrg: UIOrganization) => {
-    // Find the original organization from our data
     const org = organizations.find(o => o.id === uiOrg.id) || null;
     setSelectedOrganization(org);
     setActiveTab("details");
@@ -43,12 +36,18 @@ const OrganizationManagement = () => {
     setActiveTab("details");
   };
 
+  const handleEditSave = () => setIsEditMode(false);
+  const handleEditCancel = () => {
+    setIsEditMode(false);
+    setActiveTab("organizations");
+  };
+
   if (isLoading) return (
     <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[50vh]">
       <div className="text-xl">Loading organizations...</div>
     </div>
   );
-  
+
   if (error) return (
     <div className="container mx-auto px-4 py-8">
       <Alert variant="destructive">
@@ -65,6 +64,7 @@ const OrganizationManagement = () => {
   );
 
   const uiOrganizations = organizations.map(mapToUIOrganization);
+  const selectedUiOrg = selectedOrganization ? mapToUIOrganization(selectedOrganization) : null;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -72,149 +72,24 @@ const OrganizationManagement = () => {
         <h1 className="text-3xl font-bold mb-2">Organization Management</h1>
         <p className="text-gray-600">Configure and manage organizations within the platform</p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Organizations</CardTitle>
-            <CardDescription>Total registered</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{organizations.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Members</CardTitle>
-            <CardDescription>Across all organizations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {organizations.reduce((sum, org) => sum + (org.membersCount || 0), 0)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Offers</CardTitle>
-            <CardDescription>Currently running</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {organizations.reduce((sum, org) => sum + (org.offersCount || 0), 0)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              className="w-full mb-2 justify-start" 
-              onClick={handleCreateNew}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Organization
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8">
-          <TabsTrigger value="organizations">All Organizations</TabsTrigger>
-          <TabsTrigger value="details">Organization Details</TabsTrigger>
-          <TabsTrigger value="branding">Branding Controls</TabsTrigger>
-          <TabsTrigger value="rules">Business Rules</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="organizations">
-          {uiOrganizations.length > 0 ? (
-            <OrganizationList 
-              organizations={uiOrganizations} 
-              onSelect={handleOrganizationSelect} 
-              onCreateNew={handleCreateNew}
-            />
-          ) : (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center py-8">
-                  <Building className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-medium mb-2">No Organizations Found</h3>
-                  <p className="text-gray-500 mb-6">Get started by creating your first organization</p>
-                  <Button onClick={handleCreateNew}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create Organization
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="details">
-          {selectedOrganization && (
-            <OrganizationForm 
-              organization={mapToUIOrganization(selectedOrganization)} 
-              isEditMode={isEditMode} 
-              onSave={() => setIsEditMode(false)}
-              onCancel={() => {
-                setIsEditMode(false);
-                setActiveTab("organizations");
-              }}
-            />
-          )}
-          {!selectedOrganization && isEditMode && (
-            <OrganizationForm 
-              organization={null} 
-              isEditMode={true} 
-              onSave={() => setIsEditMode(false)}
-              onCancel={() => {
-                setIsEditMode(false);
-                setActiveTab("organizations");
-              }}
-            />
-          )}
-          {!selectedOrganization && !isEditMode && (
-            <div className="text-center p-8">
-              <h3 className="text-lg font-medium">No organization selected</h3>
-              <p className="text-gray-500">Please select an organization to view details</p>
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="branding">
-          {selectedOrganization ? (
-            <OrganizationBranding 
-              organization={mapToUIOrganization(selectedOrganization)} 
-            />
-          ) : (
-            <div className="text-center p-8">
-              <h3 className="text-lg font-medium">No organization selected</h3>
-              <p className="text-gray-500">Please select an organization to manage branding</p>
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="rules">
-          {selectedOrganization ? (
-            <OrganizationRules 
-              organization={mapToUIOrganization(selectedOrganization)} 
-            />
-          ) : (
-            <div className="text-center p-8">
-              <h3 className="text-lg font-medium">No organization selected</h3>
-              <p className="text-gray-500">Please select an organization to manage rules</p>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      <OrganizationStatsCards
+        organizations={organizations}
+        onCreateNew={handleCreateNew}
+      />
+      <OrganizationTabs
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        uiOrganizations={uiOrganizations}
+        handleOrganizationSelect={handleOrganizationSelect}
+        selectedOrganization={selectedUiOrg}
+        isEditMode={isEditMode}
+        onEditSave={handleEditSave}
+        onEditCancel={handleEditCancel}
+        onCreateNew={handleCreateNew}
+      />
     </div>
   );
 };
 
 export default OrganizationManagement;
+
