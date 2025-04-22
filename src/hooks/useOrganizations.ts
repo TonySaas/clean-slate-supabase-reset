@@ -34,7 +34,7 @@ export const useOrganizations = () => {
       // Transform the data to include member counts
       return (data || []).map(org => ({
         ...org,
-        membersCount: 0, // TODO: Implement actual count from organization_members
+        membersCount: org.organization_members?.[0]?.count || 0,
         offersCount: 0, // TODO: Implement offers count when that feature is added
       }));
     }

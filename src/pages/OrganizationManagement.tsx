@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,16 @@ import { OrganizationBranding } from '@/components/organization/OrganizationBran
 import { OrganizationRules } from '@/components/organization/OrganizationRules';
 import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
 
+// Define a type for the organization expected by the UI components
+interface UIOrganization {
+  id: string;
+  name: string;
+  logo: string;
+  primaryColor: string;
+  membersCount: number;
+  offersCount: number;
+}
+
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
@@ -16,7 +27,19 @@ const OrganizationManagement = () => {
 
   const { data: organizations = [], isLoading, error } = useOrganizations();
 
-  const handleOrganizationSelect = (org: Organization) => {
+  // Convert Organization to UIOrganization format
+  const mapToUIOrganization = (org: Organization): UIOrganization => ({
+    id: org.id,
+    name: org.name,
+    logo: org.logo_url || '/placeholder.svg',
+    primaryColor: org.primary_color || '#0066CC',
+    membersCount: org.membersCount || 0,
+    offersCount: org.offersCount || 0,
+  });
+
+  const handleOrganizationSelect = (uiOrg: UIOrganization) => {
+    // Find the original organization from our data
+    const org = organizations.find(o => o.id === uiOrg.id) || null;
     setSelectedOrganization(org);
     setActiveTab("details");
   };
@@ -29,6 +52,8 @@ const OrganizationManagement = () => {
 
   if (isLoading) return <div>Loading organizations...</div>;
   if (error) return <div>Error loading organizations</div>;
+
+  const uiOrganizations = organizations.map(mapToUIOrganization);
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -98,14 +123,7 @@ const OrganizationManagement = () => {
         
         <TabsContent value="organizations">
           <OrganizationList 
-            organizations={organizations.map(org => ({
-              id: org.id,
-              name: org.name,
-              logo: org.logo_url || '/placeholder.svg',
-              primaryColor: org.primary_color || '#0066CC',
-              membersCount: org.membersCount || 0,
-              offersCount: org.offersCount || 0,
-            }))} 
+            organizations={uiOrganizations} 
             onSelect={handleOrganizationSelect} 
             onCreateNew={handleCreateNew}
           />
@@ -113,14 +131,7 @@ const OrganizationManagement = () => {
         
         <TabsContent value="details">
           <OrganizationForm 
-            organization={selectedOrganization ? {
-              id: selectedOrganization.id,
-              name: selectedOrganization.name,
-              logo: selectedOrganization.logo_url || '/placeholder.svg',
-              primaryColor: selectedOrganization.primary_color || '#0066CC',
-              membersCount: selectedOrganization.membersCount || 0,
-              offersCount: selectedOrganization.offersCount || 0,
-            } : null} 
+            organization={selectedOrganization ? mapToUIOrganization(selectedOrganization) : null} 
             isEditMode={isEditMode} 
             onSave={() => setIsEditMode(false)}
             onCancel={() => {
@@ -132,27 +143,13 @@ const OrganizationManagement = () => {
         
         <TabsContent value="branding">
           <OrganizationBranding 
-            organization={selectedOrganization ? {
-              id: selectedOrganization.id,
-              name: selectedOrganization.name,
-              logo: selectedOrganization.logo_url || '/placeholder.svg',
-              primaryColor: selectedOrganization.primary_color || '#0066CC',
-              membersCount: selectedOrganization.membersCount || 0,
-              offersCount: selectedOrganization.offersCount || 0,
-            } : null} 
+            organization={selectedOrganization ? mapToUIOrganization(selectedOrganization) : null} 
           />
         </TabsContent>
         
         <TabsContent value="rules">
           <OrganizationRules 
-            organization={selectedOrganization ? {
-              id: selectedOrganization.id,
-              name: selectedOrganization.name,
-              logo: selectedOrganization.logo_url || '/placeholder.svg',
-              primaryColor: selectedOrganization.primary_color || '#0066CC',
-              membersCount: selectedOrganization.membersCount || 0,
-              offersCount: selectedOrganization.offersCount || 0,
-            } : null} 
+            organization={selectedOrganization ? mapToUIOrganization(selectedOrganization) : null} 
           />
         </TabsContent>
       </Tabs>
