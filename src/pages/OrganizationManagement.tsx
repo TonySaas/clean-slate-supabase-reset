@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Building, AlertTriangle } from "lucide-react";
+import { Building, AlertTriangle, PlusCircle } from "lucide-react";
 import { OrganizationList, UIOrganization } from '@/components/organization/OrganizationList';
 import { OrganizationForm } from '@/components/organization/OrganizationForm';
 import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
@@ -115,7 +115,7 @@ const OrganizationManagement = () => {
               className="w-full mb-2 justify-start" 
               onClick={handleCreateNew}
             >
-              <Building className="mr-2 h-4 w-4" />
+              <PlusCircle className="mr-2 h-4 w-4" />
               Create Organization
             </Button>
           </CardContent>
@@ -131,11 +131,27 @@ const OrganizationManagement = () => {
         </TabsList>
         
         <TabsContent value="organizations">
-          <OrganizationList 
-            organizations={uiOrganizations} 
-            onSelect={handleOrganizationSelect} 
-            onCreateNew={handleCreateNew}
-          />
+          {uiOrganizations.length > 0 ? (
+            <OrganizationList 
+              organizations={uiOrganizations} 
+              onSelect={handleOrganizationSelect} 
+              onCreateNew={handleCreateNew}
+            />
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center py-8">
+                  <Building className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium mb-2">No Organizations Found</h3>
+                  <p className="text-gray-500 mb-6">Get started by creating your first organization</p>
+                  <Button onClick={handleCreateNew}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Organization
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         
         <TabsContent value="details">
@@ -161,15 +177,20 @@ const OrganizationManagement = () => {
               }}
             />
           )}
+          {!selectedOrganization && !isEditMode && (
+            <div className="text-center p-8">
+              <h3 className="text-lg font-medium">No organization selected</h3>
+              <p className="text-gray-500">Please select an organization to view details</p>
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="branding">
-          {selectedOrganization && (
+          {selectedOrganization ? (
             <OrganizationBranding 
               organization={mapToUIOrganization(selectedOrganization)} 
             />
-          )}
-          {!selectedOrganization && (
+          ) : (
             <div className="text-center p-8">
               <h3 className="text-lg font-medium">No organization selected</h3>
               <p className="text-gray-500">Please select an organization to manage branding</p>
@@ -178,12 +199,11 @@ const OrganizationManagement = () => {
         </TabsContent>
         
         <TabsContent value="rules">
-          {selectedOrganization && (
+          {selectedOrganization ? (
             <OrganizationRules 
               organization={mapToUIOrganization(selectedOrganization)} 
             />
-          )}
-          {!selectedOrganization && (
+          ) : (
             <div className="text-center p-8">
               <h3 className="text-lg font-medium">No organization selected</h3>
               <p className="text-gray-500">Please select an organization to manage rules</p>

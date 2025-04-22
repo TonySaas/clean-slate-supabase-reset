@@ -18,10 +18,10 @@ export const useOrganizations = () => {
     queryKey: ['organizations'],
     queryFn: async (): Promise<Organization[]> => {
       try {
-        // Fetch only organizations - avoid any join that might trigger RLS recursion
+        // Only fetch organizations table data to avoid any RLS recursion issues
         const { data: orgsData, error: orgsError } = await supabase
           .from('organizations')
-          .select('*');
+          .select('id, name, logo_url, primary_color, domain, created_at, updated_at');
         
         if (orgsError) {
           toast.error("Error fetching organizations", {
@@ -30,11 +30,14 @@ export const useOrganizations = () => {
           throw orgsError;
         }
 
-        // Return organizations without member counts for now
-        // This ensures we at least show the organizations even if we can't count members
+        if (!orgsData || orgsData.length === 0) {
+          return [];
+        }
+
+        // Map the data to our Organization interface with default counts
         const organizations: Organization[] = orgsData.map(org => ({
           ...org,
-          membersCount: 0, // Default to 0 to avoid the recursion issue entirely
+          membersCount: 0, // Default to 0 since the members table is empty
           offersCount: 0,  // Default to 0 for now
         }));
         
