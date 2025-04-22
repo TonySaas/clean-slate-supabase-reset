@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
 import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
 import { OrganizationStatsCards } from '@/components/organization/OrganizationStatsCards';
 import { OrganizationTabs } from '@/components/organization/OrganizationTabs';
 import { UIOrganization } from '@/components/organization/OrganizationList';
+
+import { OrganizationManagementHeader } from "./organization/OrganizationManagementHeader";
+import { OrganizationManagementLoading } from "./organization/OrganizationManagementLoading";
+import { OrganizationManagementError } from "./organization/OrganizationManagementError";
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
@@ -42,36 +44,16 @@ const OrganizationManagement = () => {
     setActiveTab("organizations");
   };
 
-  if (isLoading) return (
-    <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[50vh]">
-      <div className="text-xl">Loading organizations...</div>
-    </div>
-  );
+  if (isLoading) return <OrganizationManagementLoading />;
 
-  if (error) return (
-    <div className="container mx-auto px-4 py-8">
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>
-          Failed to load organizations. Please try again later.
-          {error instanceof Error && (
-            <div className="mt-2 text-sm opacity-80">{error.message}</div>
-          )}
-        </AlertDescription>
-      </Alert>
-    </div>
-  );
+  if (error) return <OrganizationManagementError error={error} />;
 
   const uiOrganizations = organizations.map(mapToUIOrganization);
   const selectedUiOrg = selectedOrganization ? mapToUIOrganization(selectedOrganization) : null;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Organization Management</h1>
-        <p className="text-gray-600">Configure and manage organizations within the platform</p>
-      </div>
+      <OrganizationManagementHeader />
       <OrganizationStatsCards
         organizations={organizations}
         onCreateNew={handleCreateNew}
@@ -92,4 +74,3 @@ const OrganizationManagement = () => {
 };
 
 export default OrganizationManagement;
-
