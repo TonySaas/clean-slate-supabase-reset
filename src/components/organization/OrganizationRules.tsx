@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -6,18 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Save, Plus, Trash2 } from "lucide-react";
-
-interface Organization {
-  id: number;
-  name: string;
-  logo: string;
-  primaryColor: string;
-  membersCount: number;
-  offersCount: number;
-}
+import { UIOrganization } from './OrganizationList';
 
 interface OrganizationRulesProps {
-  organization: Organization;
+  organization: UIOrganization;
 }
 
 // Sample rule data

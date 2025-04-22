@@ -1,22 +1,13 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Building, Save, X } from "lucide-react";
-
-interface Organization {
-  id: number;
-  name: string;
-  logo: string;
-  primaryColor: string;
-  membersCount: number;
-  offersCount: number;
-}
+import { UIOrganization } from './OrganizationList';
 
 interface OrganizationFormProps {
-  organization: Organization | null;
+  organization: UIOrganization | null;
   isEditMode: boolean;
   onSave: () => void;
   onCancel: () => void;
