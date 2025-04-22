@@ -3,14 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Building } from "lucide-react";
+import { Building, AlertTriangle } from "lucide-react";
 import { OrganizationList, UIOrganization } from '@/components/organization/OrganizationList';
 import { OrganizationForm } from '@/components/organization/OrganizationForm';
 import { OrganizationBranding } from '@/components/organization/OrganizationBranding';
 import { OrganizationRules } from '@/components/organization/OrganizationRules';
 import { useOrganizations, type Organization } from '@/hooks/useOrganizations';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
@@ -42,14 +41,23 @@ const OrganizationManagement = () => {
     setActiveTab("details");
   };
 
-  if (isLoading) return <div className="container mx-auto px-4 py-8">Loading organizations...</div>;
+  if (isLoading) return (
+    <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[50vh]">
+      <div className="text-xl">Loading organizations...</div>
+    </div>
+  );
   
   if (error) return (
     <div className="container mx-auto px-4 py-8">
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>Failed to load organizations. Please try again later.</AlertDescription>
+        <AlertDescription>
+          Failed to load organizations. Please try again later.
+          {error instanceof Error && (
+            <div className="mt-2 text-sm opacity-80">{error.message}</div>
+          )}
+        </AlertDescription>
       </Alert>
     </div>
   );
