@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Building, ShoppingBag, Users } from 'lucide-react';
+import { Building, ShoppingBag, Users, Database } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -20,6 +20,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <Link to="/supplier" className="hover:text-blue-600 transition-colors">Suppliers</Link>
               <Link to="/retailer" className="hover:text-blue-600 transition-colors">Retailers</Link>
               <Link to="/consumer" className="hover:text-blue-600 transition-colors">Consumers</Link>
+              <Link to="/organizations" className="hover:text-blue-600 transition-colors">Organizations</Link>
               <Link to="/about" className="hover:text-blue-600 transition-colors">About</Link>
             </nav>
             <div className="flex items-center gap-2">
