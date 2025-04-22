@@ -18,6 +18,8 @@ const OrganizationManagement = () => {
 
   const { data: organizations = [], isLoading, error } = useOrganizations();
 
+  console.log('Organizations loaded in component:', organizations);
+
   // Convert Organization to UIOrganization format
   const mapToUIOrganization = (org: Organization): UIOrganization => ({
     id: org.id,
