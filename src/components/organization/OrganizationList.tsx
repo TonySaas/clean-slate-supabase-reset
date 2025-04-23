@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -29,9 +30,9 @@ export const OrganizationList: React.FC<OrganizationListProps> = ({
   const getDefaultLogo = (orgName: string) => {
     // Use the first letter of the organization name as a default "logo"
     return `data:image/svg+xml,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-        <rect width="40" height="40" fill="#E0E0E0" />
-        <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="20" fill="#333">
+      <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+        <rect width="80" height="80" fill="#E0E0E0" />
+        <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="40" fill="#333">
           ${orgName.charAt(0).toUpperCase()}
         </text>
       </svg>
@@ -64,11 +65,11 @@ export const OrganizationList: React.FC<OrganizationListProps> = ({
               <TableRow key={org.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-md overflow-hidden mr-3 bg-gray-100 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-md overflow-hidden mr-4 bg-gray-100 flex items-center justify-center">
                       <img 
                         src={org.logo || getDefaultLogo(org.name)} 
                         alt={`${org.name} logo`} 
-                        className="w-6 h-6 object-contain" 
+                        className="w-14 h-14 object-contain" 
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = getDefaultLogo(org.name);
