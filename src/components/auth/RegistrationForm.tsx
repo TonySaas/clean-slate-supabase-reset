@@ -1,10 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { NameFields } from './NameFields';
 import { ContactFields } from './ContactFields';
 import { PasswordFields } from './PasswordFields';
+import { AlertCircle } from 'lucide-react';
 
 interface RegistrationFormProps {
   onSubmit: (formData: {
@@ -26,12 +26,30 @@ export const RegistrationForm = ({ onSubmit, isSubmitting }: RegistrationFormPro
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [jobTitle, setJobTitle] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Clear password error when either password field changes
+    if (passwordError) setPasswordError(null);
+  }, [password, confirmPassword]);
+
+  const validatePasswords = () => {
+    if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters long');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password !== confirmPassword) {
-      return; // Password validation is handled by parent
+    if (!validatePasswords()) {
+      return;
     }
 
     onSubmit({
@@ -69,9 +87,20 @@ export const RegistrationForm = ({ onSubmit, isSubmitting }: RegistrationFormPro
           onPasswordChange={setPassword}
           onConfirmPasswordChange={setConfirmPassword}
         />
+        
+        {passwordError && (
+          <div className="flex items-center gap-2 text-red-600 text-sm">
+            <AlertCircle size={16} />
+            <span>{passwordError}</span>
+          </div>
+        )}
       </div>
       
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={isSubmitting}
+      >
         {isSubmitting ? 'Creating account...' : 'Create account'}
       </Button>
     </form>

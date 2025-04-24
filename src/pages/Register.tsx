@@ -35,6 +35,7 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
+      // First attempt to sign up the user
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -51,15 +52,32 @@ export default function Register() {
       });
 
       if (error) {
-        console.error('Registration error:', error);
+        console.error('Registration error from Supabase:', error);
         setErrorDetails(error.message);
         throw error;
       }
 
       if (data?.user) {
-        console.log('Registration successful, user created:', data.user.id);
+        console.log('Auth user created successfully:', data.user.id);
         
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Add a short delay to allow the database trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verify the user profile was created successfully
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Error verifying user profile:', profileError);
+          if (profileError.code === 'PGRST116') {
+            throw new Error('User profile was not created properly. Please try again.');
+          }
+        }
+        
+        // Sign out the user to ensure clean state
         await supabase.auth.signOut();
         
         toast.success('Registration successful! Please check your email to verify your account.');
@@ -73,9 +91,14 @@ export default function Register() {
     } catch (error: any) {
       console.error('Registration process failed:', error);
       
+      // Handle specific error cases with more user-friendly messages
       if (error.message?.includes('Database error') || error.message?.includes('foreign key constraint')) {
         toast.error('Registration failed', {
-          description: 'There was an issue creating your user profile. Please try again later or contact support.'
+          description: 'There was an issue creating your profile. Please try again with a different email address.'
+        });
+      } else if (error.message?.includes('already registered')) {
+        toast.error('Registration failed', {
+          description: 'This email is already registered. Please try logging in or use a different email.'
         });
       } else {
         toast.error('Registration failed', {
