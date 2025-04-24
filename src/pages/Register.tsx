@@ -38,32 +38,27 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // First, check if user already exists to provide a better error message
-      const { data: existingUser } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('email', formData.email)
-        .single();
-        
-      if (existingUser) {
+      // First, check if the email already exists
+      const { data: existingUser, error: checkError } = await supabase.auth.admin
+        .listUsers({
+          filter: {
+            email: formData.email,
+          },
+        });
+
+      if (checkError) {
+        console.log('Error checking existing user:', checkError);
+        // Continue with registration attempt even if check fails
+      } else if (existingUser && existingUser.length > 0) {
         setEmailError('This email is already registered. Please use a different email address.');
         setIsSubmitting(false);
         return;
       }
       
-      // User signup with metadata but WITHOUT auto handling of profiles/roles
+      // Create the user through auth API - WITHOUT metadata to reduce complexity
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle,
-            organization_id: organizationId
-          }
-        }
       });
       
       if (error) {
@@ -88,63 +83,84 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Manual creation of user profile to avoid race conditions
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: data.user.id,
-          email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          job_title: formData.jobTitle,
-          organization_id: organizationId
-        });
-        
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        setErrorDetails('Error creating user profile: ' + profileError.message);
-        setIsSubmitting(false);
-        return;
-      }
+      // Wait a short moment to ensure auth user creation is fully processed
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Manual assignment of user roles
-      const { data: roleData } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('name', 'user')
-        .single();
-        
-      if (roleData) {
-        await supabase
-          .from('user_roles')
+      try {
+        // Now create the user profile separately
+        const { error: profileError } = await supabase
+          .from('user_profiles')
           .insert({
-            user_id: data.user.id,
-            role_id: roleData.id
+            id: data.user.id,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle,
+            organization_id: organizationId
           });
-      }
-      
-      // If organization_id is provided, assign org_admin role
-      if (organizationId) {
-        const { data: orgAdminRoleData } = await supabase
+          
+        if (profileError) {
+          console.error('Error creating user profile:', profileError);
+          setErrorDetails('Error creating user profile: ' + profileError.message);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Get role IDs first before trying to assign them
+        const { data: userRoleData, error: userRoleError } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('name', 'user')
+          .single();
+          
+        const { data: adminRoleData, error: adminRoleError } = await supabase
           .from('roles')
           .select('id')
           .eq('name', 'org_admin')
           .single();
-          
-        if (orgAdminRoleData) {
-          await supabase
+        
+        if (userRoleError) {
+          console.error('Error getting user role ID:', userRoleError);
+        } else {
+          // Assign user role
+          const { error: assignUserRoleError } = await supabase
             .from('user_roles')
             .insert({
               user_id: data.user.id,
-              role_id: orgAdminRoleData.id
+              role_id: userRoleData.id
             });
+            
+          if (assignUserRoleError) {
+            console.error('Error assigning user role:', assignUserRoleError);
+          }
         }
+        
+        if (adminRoleError) {
+          console.error('Error getting admin role ID:', adminRoleError);
+        } else {
+          // Assign org_admin role
+          const { error: assignAdminRoleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: data.user.id,
+              role_id: adminRoleData.id
+            });
+            
+          if (assignAdminRoleError) {
+            console.error('Error assigning admin role:', assignAdminRoleError);
+          }
+        }
+        
+        // Sign out the user after successful registration
+        await supabase.auth.signOut();
+        toast.success('Registration successful! You can now log in with your new account.');
+        navigate('/login');
+      } catch (error: any) {
+        console.error('Error in profile/role creation:', error);
+        setErrorDetails('Error setting up user account: ' + error.message);
+        setIsSubmitting(false);
       }
-      
-      await supabase.auth.signOut();
-      toast.success('Registration successful! You can now log in with your new account.');
-      navigate('/login');
       
     } catch (error: any) {
       console.error('Unexpected error during registration:', error);
