@@ -4,26 +4,38 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  job_title: string | null;
+  organization_id: string;
+}
+
 export const useAuth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
           try {
             const { data: profile, error } = await supabase
               .from('user_profiles')
-              .select('organization_id')
+              .select('*')
               .eq('id', session.user.id)
               .single();
 
             if (error) throw error;
+            
             if (profile?.organization_id) {
               setOrganizationId(profile.organization_id);
+              setProfile(profile);
               navigate(`/dashboard/${profile.organization_id}`);
             }
           } catch (error) {
@@ -32,6 +44,7 @@ export const useAuth = () => {
           }
         } else {
           setOrganizationId(null);
+          setProfile(null);
         }
         setIsLoading(false);
       }
@@ -73,5 +86,5 @@ export const useAuth = () => {
     }
   };
 
-  return { login, logout, isLoading, organizationId };
+  return { login, logout, isLoading, organizationId, profile };
 };
