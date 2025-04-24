@@ -38,32 +38,11 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // First check if email already exists in user profiles
-      const { data: existingProfile, error: emailCheckError } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('email', formData.email)
-        .single();
-        
-      if (emailCheckError && emailCheckError.code !== 'PGRST116') {
-        // PGRST116 means "no rows returned" which is what we want
-        console.error('Error checking email:', emailCheckError);
-        throw new Error(`Email check failed: ${emailCheckError.message}`);
-      }
-      
-      if (existingProfile) {
-        setEmailError('This email is already registered. Please use a different email address.');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Create the user with auth.signUp but DON'T try to add profile or role data here
-      // We'll do that after confirming the user was created successfully
+      // Simplified approach - Sign up the user directly with minimal metadata
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          // Only include minimal metadata for now
           data: {
             organization_id: organizationId,
           }
@@ -90,56 +69,11 @@ export default function Register() {
       }
       
       console.log('User created successfully:', data.user.id);
-
-      // Now that user is created, insert into user_profiles manually
-      try {
-        // Wait a moment to ensure the auth user is fully created
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Now create the profile
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            email: formData.email,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle,
-            organization_id: organizationId
-          });
-        
-        if (profileError) {
-          console.error('Error creating profile manually:', profileError);
-          setErrorDetails(`Profile creation error: ${profileError.message}`);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Now create the user role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role_id: 1 // Assuming 1 is for basic user role
-          });
-        
-        if (roleError) {
-          console.error('Error assigning role:', roleError);
-          // Continue even if role assignment fails
-        }
-        
-        // Sign out the user
-        await supabase.auth.signOut();
-        
-        toast.success('Registration successful! You can now log in with your new account.');
-        navigate('/login');
-      } catch (err: any) {
-        console.error('Error in profile/role creation:', err);
-        setErrorDetails(`Profile error: ${err.message}`);
-        setIsSubmitting(false);
-      }
       
+      // Success - sign out and redirect to login
+      await supabase.auth.signOut();
+      toast.success('Registration successful! You can now log in with your new account.');
+      navigate('/login');
     } catch (error: any) {
       console.error('Registration process failed:', error);
       setErrorDetails(error.message || 'An unexpected error occurred');
