@@ -40,6 +40,7 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
+      // 1. Create the user account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -50,7 +51,9 @@ export default function Register() {
             last_name: lastName,
             phone: phone,
             job_title: jobTitle
-          }
+          },
+          // Don't auto-confirm email during registration to allow time for the database operations
+          emailRedirectTo: `${window.location.origin}/login`
         }
       });
 
@@ -62,6 +65,13 @@ export default function Register() {
 
       if (data?.user) {
         console.log('Registration successful, user created:', data.user.id);
+        
+        // 2. Wait a moment to ensure database operations complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 3. Sign out the user (to prevent auto-login before profile is fully created)
+        await supabase.auth.signOut();
+        
         toast.success('Registration successful! Please check your email to verify your account.');
         navigate('/login');
       } else {
@@ -72,9 +82,17 @@ export default function Register() {
       }
     } catch (error: any) {
       console.error('Registration process failed:', error);
-      toast.error('Registration failed', {
-        description: error.message || 'An unexpected error occurred'
-      });
+      
+      // Show a more user-friendly error message for the database error
+      if (error.message?.includes('Database error') || error.message?.includes('foreign key constraint')) {
+        toast.error('Registration failed', {
+          description: 'There was an issue creating your user profile. Please try again later or contact support.'
+        });
+      } else {
+        toast.error('Registration failed', {
+          description: error.message || 'An unexpected error occurred'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
