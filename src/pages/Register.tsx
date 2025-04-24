@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -37,6 +38,20 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
+      // First, check if user already exists to provide a better error message
+      const { data: existingUser } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('email', formData.email)
+        .single();
+        
+      if (existingUser) {
+        setEmailError('This email is already registered. Please use a different email address.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // User signup with metadata but WITHOUT auto handling of profiles/roles
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -73,9 +88,59 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Let the database triggers handle profile creation and role assignment
-      // Add a small delay to ensure the triggers have completed
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Manual creation of user profile to avoid race conditions
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: data.user.id,
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          job_title: formData.jobTitle,
+          organization_id: organizationId
+        });
+        
+      if (profileError) {
+        console.error('Error creating user profile:', profileError);
+        setErrorDetails('Error creating user profile: ' + profileError.message);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Manual assignment of user roles
+      const { data: roleData } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'user')
+        .single();
+        
+      if (roleData) {
+        await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role_id: roleData.id
+          });
+      }
+      
+      // If organization_id is provided, assign org_admin role
+      if (organizationId) {
+        const { data: orgAdminRoleData } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('name', 'org_admin')
+          .single();
+          
+        if (orgAdminRoleData) {
+          await supabase
+            .from('user_roles')
+            .insert({
+              user_id: data.user.id,
+              role_id: orgAdminRoleData.id
+            });
+        }
+      }
       
       await supabase.auth.signOut();
       toast.success('Registration successful! You can now log in with your new account.');
