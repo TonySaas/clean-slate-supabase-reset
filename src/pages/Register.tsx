@@ -53,10 +53,20 @@ export default function Register() {
         return;
       }
       
-      // Create the user through auth API
+      // Create the user through auth API, including all needed metadata
+      // This will trigger the database function to create profiles and roles
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          data: {
+            organization_id: organizationId,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle
+          }
+        }
       });
       
       if (error) {
@@ -81,101 +91,10 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Wait a longer moment to ensure auth user creation is fully processed
-      // This is critical to prevent foreign key constraint errors
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      try {
-        // Create the user profile first, before assigning any roles
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            email: formData.email,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle,
-            organization_id: organizationId
-          });
-          
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          setErrorDetails('Error creating user profile: ' + profileError.message);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Add a small delay between operations to ensure database consistency
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Get user role ID with error handling
-        const { data: userRoleData, error: userRoleError } = await supabase
-          .from('roles')
-          .select('id')
-          .eq('name', 'user')
-          .single();
-          
-        if (userRoleError) {
-          console.error('Error getting user role ID:', userRoleError);
-          setErrorDetails('Error assigning roles: ' + userRoleError.message);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Assign user role
-        const { error: assignUserRoleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role_id: userRoleData.id
-          });
-            
-        if (assignUserRoleError) {
-          console.error('Error assigning user role:', assignUserRoleError);
-          setErrorDetails('Error assigning user role: ' + assignUserRoleError.message);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Get admin role ID with error handling
-        const { data: adminRoleData, error: adminRoleError } = await supabase
-          .from('roles')
-          .select('id')
-          .eq('name', 'org_admin')
-          .single();
-        
-        if (adminRoleError) {
-          console.error('Error getting admin role ID:', adminRoleError);
-          setErrorDetails('Error assigning admin role: ' + adminRoleError.message);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Assign admin role
-        const { error: assignAdminRoleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role_id: adminRoleData.id
-          });
-            
-        if (assignAdminRoleError) {
-          console.error('Error assigning admin role:', assignAdminRoleError);
-          setErrorDetails('Error assigning admin role: ' + assignAdminRoleError.message);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Sign out the user after successful registration
-        await supabase.auth.signOut();
-        toast.success('Registration successful! You can now log in with your new account.');
-        navigate('/login');
-      } catch (error: any) {
-        console.error('Error in profile/role creation:', error);
-        setErrorDetails('Error setting up user account: ' + error.message);
-        setIsSubmitting(false);
-      }
+      // Sign out the user after successful registration
+      await supabase.auth.signOut();
+      toast.success('Registration successful! You can now log in with your new account.');
+      navigate('/login');
       
     } catch (error: any) {
       console.error('Unexpected error during registration:', error);
