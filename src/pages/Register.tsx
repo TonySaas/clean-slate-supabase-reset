@@ -81,11 +81,12 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Wait a short moment to ensure auth user creation is fully processed
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait a longer moment to ensure auth user creation is fully processed
+      // This is critical to prevent foreign key constraint errors
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       try {
-        // Now create the user profile separately
+        // Create the user profile first, before assigning any roles
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert({
@@ -105,49 +106,65 @@ export default function Register() {
           return;
         }
         
-        // Get role IDs first before trying to assign them
+        // Add a small delay between operations to ensure database consistency
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get user role ID with error handling
         const { data: userRoleData, error: userRoleError } = await supabase
           .from('roles')
           .select('id')
           .eq('name', 'user')
           .single();
           
+        if (userRoleError) {
+          console.error('Error getting user role ID:', userRoleError);
+          setErrorDetails('Error assigning roles: ' + userRoleError.message);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Assign user role
+        const { error: assignUserRoleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role_id: userRoleData.id
+          });
+            
+        if (assignUserRoleError) {
+          console.error('Error assigning user role:', assignUserRoleError);
+          setErrorDetails('Error assigning user role: ' + assignUserRoleError.message);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Get admin role ID with error handling
         const { data: adminRoleData, error: adminRoleError } = await supabase
           .from('roles')
           .select('id')
           .eq('name', 'org_admin')
           .single();
         
-        if (userRoleError) {
-          console.error('Error getting user role ID:', userRoleError);
-        } else {
-          // Assign user role
-          const { error: assignUserRoleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: data.user.id,
-              role_id: userRoleData.id
-            });
-            
-          if (assignUserRoleError) {
-            console.error('Error assigning user role:', assignUserRoleError);
-          }
-        }
-        
         if (adminRoleError) {
           console.error('Error getting admin role ID:', adminRoleError);
-        } else {
-          // Assign org_admin role
-          const { error: assignAdminRoleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: data.user.id,
-              role_id: adminRoleData.id
-            });
+          setErrorDetails('Error assigning admin role: ' + adminRoleError.message);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Assign admin role
+        const { error: assignAdminRoleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role_id: adminRoleData.id
+          });
             
-          if (assignAdminRoleError) {
-            console.error('Error assigning admin role:', assignAdminRoleError);
-          }
+        if (assignAdminRoleError) {
+          console.error('Error assigning admin role:', assignAdminRoleError);
+          setErrorDetails('Error assigning admin role: ' + assignAdminRoleError.message);
+          setIsSubmitting(false);
+          return;
         }
         
         // Sign out the user after successful registration
