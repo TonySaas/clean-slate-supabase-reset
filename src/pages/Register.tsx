@@ -17,6 +17,7 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const organizationId = searchParams.get('organization');
 
   useEffect(() => {
@@ -28,6 +29,8 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorDetails(null);
+    
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -35,7 +38,9 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      console.log('Starting registration process with organization:', organizationId);
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -49,13 +54,26 @@ export default function Register() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Registration error:', error);
+        setErrorDetails(error.message);
+        throw error;
+      }
 
-      toast.success('Registration successful! Please check your email to verify your account.');
-      navigate('/login');
+      if (data?.user) {
+        console.log('Registration successful, user created:', data.user.id);
+        toast.success('Registration successful! Please check your email to verify your account.');
+        navigate('/login');
+      } else {
+        const msg = 'No user data returned from sign up';
+        console.error(msg);
+        setErrorDetails(msg);
+        throw new Error(msg);
+      }
     } catch (error: any) {
+      console.error('Registration process failed:', error);
       toast.error('Registration failed', {
-        description: error.message
+        description: error.message || 'An unexpected error occurred'
       });
     } finally {
       setIsSubmitting(false);
@@ -164,6 +182,14 @@ export default function Register() {
               />
             </div>
           </div>
+          
+          {errorDetails && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <p className="font-medium">Registration Error Details:</p>
+              <p className="mt-1">{errorDetails}</p>
+            </div>
+          )}
+          
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account...' : 'Create account'}
           </Button>
