@@ -38,24 +38,22 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // First, check if the email already exists
-      const { data: existingUser, error: checkError } = await supabase.auth.admin
-        .listUsers({
-          filter: {
-            email: formData.email,
-          },
-        });
+      // Check if the email already exists using simple query instead of admin.listUsers
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('email', formData.email);
 
       if (checkError) {
         console.log('Error checking existing user:', checkError);
         // Continue with registration attempt even if check fails
-      } else if (existingUser && existingUser.length > 0) {
+      } else if (existingUsers && existingUsers.length > 0) {
         setEmailError('This email is already registered. Please use a different email address.');
         setIsSubmitting(false);
         return;
       }
       
-      // Create the user through auth API - WITHOUT metadata to reduce complexity
+      // Create the user through auth API
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -84,7 +82,7 @@ export default function Register() {
       console.log('User created successfully:', data.user.id);
       
       // Wait a short moment to ensure auth user creation is fully processed
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       try {
         // Now create the user profile separately
