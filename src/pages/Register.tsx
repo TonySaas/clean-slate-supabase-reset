@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -38,7 +37,6 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // Step 1: Register the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -75,21 +73,14 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Let's explicitly wait for the user to be created in the database
-      // This longer timeout helps ensure the user exists before continuing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Let the database triggers handle profile creation and role assignment
+      // Add a small delay to ensure the triggers have completed
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Use the built-in trigger in Supabase to handle profile creation and role assignment
-      // Many Supabase setups use database triggers to automatically create profiles
-      // and assign roles when a new user is created in auth.users
-      
-      // If your Supabase project doesn't have these triggers set up, you need to check
-      // with your database administrator or review the database configuration
-      
-      // Sign out and redirect to login
       await supabase.auth.signOut();
       toast.success('Registration successful! You can now log in with your new account.');
       navigate('/login');
+      
     } catch (error: any) {
       console.error('Unexpected error during registration:', error);
       setErrorDetails(error.message || 'An unexpected error occurred');
