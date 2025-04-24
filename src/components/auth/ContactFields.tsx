@@ -1,5 +1,6 @@
 
 import { Input } from '@/components/ui/input';
+import { AlertCircle } from 'lucide-react';
 
 interface ContactFieldsProps {
   email: string;
@@ -8,6 +9,7 @@ interface ContactFieldsProps {
   onEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
   onJobTitleChange: (value: string) => void;
+  emailError?: string | null;
 }
 
 export const ContactFields = ({
@@ -16,7 +18,8 @@ export const ContactFields = ({
   jobTitle,
   onEmailChange,
   onPhoneChange,
-  onJobTitleChange
+  onJobTitleChange,
+  emailError
 }: ContactFieldsProps) => {
   return (
     <>
@@ -31,7 +34,14 @@ export const ContactFields = ({
           value={email} 
           onChange={e => onEmailChange(e.target.value)} 
           placeholder="Enter your email" 
+          className={emailError ? "border-red-300" : ""}
         />
+        {emailError && (
+          <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+            <AlertCircle size={16} />
+            <span>{emailError}</span>
+          </div>
+        )}
       </div>
       <div>
         <label htmlFor="phone" className="block text-sm font-medium text-gray-700">

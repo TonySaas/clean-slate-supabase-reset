@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { NameFields } from './NameFields';
 import { ContactFields } from './ContactFields';
 import { PasswordFields } from './PasswordFields';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 
 interface RegistrationFormProps {
   onSubmit: (formData: {
@@ -16,9 +16,10 @@ interface RegistrationFormProps {
     jobTitle: string;
   }) => void;
   isSubmitting: boolean;
+  emailError?: string | null;
 }
 
-export const RegistrationForm = ({ onSubmit, isSubmitting }: RegistrationFormProps) => {
+export const RegistrationForm = ({ onSubmit, isSubmitting, emailError }: RegistrationFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -79,6 +80,7 @@ export const RegistrationForm = ({ onSubmit, isSubmitting }: RegistrationFormPro
           onEmailChange={setEmail}
           onPhoneChange={setPhone}
           onJobTitleChange={setJobTitle}
+          emailError={emailError}
         />
         
         <PasswordFields
@@ -94,6 +96,11 @@ export const RegistrationForm = ({ onSubmit, isSubmitting }: RegistrationFormPro
             <span>{passwordError}</span>
           </div>
         )}
+
+        <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+          <Info size={16} className="mt-0.5 flex-shrink-0" />
+          <p>You can use any valid email format (example@domain.com) for registration. No verification email will be sent in the development environment.</p>
+        </div>
       </div>
       
       <Button 
