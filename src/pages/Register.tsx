@@ -38,20 +38,24 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // Check if email is already registered
-      const { data: emailCheckData, error: emailCheckError } = await supabase
+      // First check if email already exists in user profiles
+      const { data: existingProfile, error: emailCheckError } = await supabase
         .from('user_profiles')
         .select('email')
         .eq('email', formData.email)
         .maybeSingle();
         
-      if (emailCheckData) {
+      if (emailCheckError) {
+        console.error('Error checking email:', emailCheckError);
+      }
+      
+      if (existingProfile) {
         setEmailError('This email is already registered. Please use a different email address.');
         setIsSubmitting(false);
         return;
       }
       
-      // Create the auth user
+      // Create auth user with metadata
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -61,89 +65,80 @@ export default function Register() {
             first_name: formData.firstName,
             last_name: formData.lastName,
             phone: formData.phone,
-            job_title: formData.jobTitle
+            job_title: formData.jobTitle,
           }
         }
       });
-
+      
       if (error) {
         console.error('Registration error:', error);
         
         if (error.message?.includes('already registered')) {
           setEmailError('This email is already registered. Please use a different email address.');
         } else {
-          setErrorDetails(error.message);
+          setErrorDetails(error.message || 'Unknown error occurred');
         }
         
-        throw error;
+        setIsSubmitting(false);
+        return;
       }
+      
+      if (!data.user) {
+        setErrorDetails('No user data returned');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('User created successfully:', data.user.id);
 
-      if (data?.user) {
-        console.log('User created successfully:', data.user.id);
+      // Let's directly insert the profile manually
+      try {
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: data.user.id,
+            organization_id: organizationId,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle
+          });
         
-        // Wait a short time to ensure auth user is fully created in the database
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        try {
-          // Manually insert into profiles table as fallback
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: data.user.id,
-              organization_id: organizationId,
-              email: formData.email,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              phone: formData.phone,
-              job_title: formData.jobTitle
-            });
-          
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            if (!profileError.message.includes('duplicate key')) {
-              throw profileError;
-            }
-          }
-          
-          // If successfully created the profile, assign user role
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: data.user.id,
-              role_id: 1 // Assuming 1 is for the basic 'user' role
-            });
-          
-          if (roleError) {
-            console.error('Role assignment error:', roleError);
-            // Continue even if role assignment fails - we can fix it later
-          }
-          
-          // Sign out the user to ensure clean state
-          await supabase.auth.signOut();
-          
-          toast.success('Registration successful! You can now log in with your new account.');
-          navigate('/login');
-        } catch (err: any) {
-          console.error('Error in profile/role creation:', err);
-          setErrorDetails(`Profile error: ${err.message}`);
-          
-          // We won't try to delete the auth user as that requires admin rights
-          // But we'll let the user know there was an issue with profile creation
-          toast.error('Account created but there was an issue with profile setup. Please contact support.');
+        if (profileError) {
+          console.error('Error creating profile manually:', profileError);
+          setErrorDetails(`Profile creation error: ${profileError.message}`);
+          setIsSubmitting(false);
+          return;
         }
-      } else {
-        setErrorDetails('No user data returned from sign up');
-        throw new Error('No user data returned');
+        
+        // Assign user role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role_id: 1 // Assuming 1 is for basic user role
+          });
+        
+        if (roleError) {
+          console.error('Error assigning role:', roleError);
+          // Continue even if role assignment fails
+        }
+        
+        // Sign out the user
+        await supabase.auth.signOut();
+        
+        toast.success('Registration successful! You can now log in with your new account.');
+        navigate('/login');
+      } catch (err: any) {
+        console.error('Error in profile/role creation:', err);
+        setErrorDetails(`Profile error: ${err.message}`);
+        setIsSubmitting(false);
       }
+      
     } catch (error: any) {
       console.error('Registration process failed:', error);
-      
-      if (!emailError) {
-        toast.error('Registration failed', {
-          description: error.message || 'An unexpected error occurred'
-        });
-      }
-    } finally {
+      setErrorDetails(error.message || 'An unexpected error occurred');
       setIsSubmitting(false);
     }
   };
