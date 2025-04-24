@@ -36,26 +36,10 @@ export default function Register() {
     setIsSubmitting(true);
     
     try {
-      console.log('Starting registration process with organization:', organizationId);
-      
-      // Check for existing email using a direct query to user_profiles
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('email', formData.email);
-
-      if (checkError) {
-        console.log('Error checking existing user:', checkError);
-        // Continue with registration attempt even if check fails
-      } else if (existingUsers && existingUsers.length > 0) {
-        setEmailError('This email is already registered. Please use a different email address.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Explicitly handle the registration in a more robust way
-      console.log('Creating user with data:', {
+      // Log the registration attempt with organization ID
+      console.log('Starting registration process:', {
         email: formData.email,
+        organizationId,
         metadata: {
           organization_id: organizationId,
           first_name: formData.firstName,
@@ -64,9 +48,9 @@ export default function Register() {
           job_title: formData.jobTitle
         }
       });
-      
-      // Create the user through auth API with metadata
-      const { data, error } = await supabase.auth.signUp({
+
+      // Create the user with auth API
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -79,60 +63,36 @@ export default function Register() {
           }
         }
       });
-      
-      if (error) {
-        console.error('Registration error:', error);
-        
-        if (error.message?.toLowerCase().includes('user already registered') || 
-            error.message?.toLowerCase().includes('already exists')) {
-          setEmailError('This email is already registered. Please use a different email address.');
+
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        if (signUpError.message?.toLowerCase().includes('email') || 
+            signUpError.message?.toLowerCase().includes('already registered')) {
+          setEmailError('This email is already registered');
         } else {
-          setErrorDetails(error.message || 'Unknown error occurred during registration');
+          setErrorDetails(signUpError.message);
         }
-        
         setIsSubmitting(false);
         return;
       }
-      
-      if (!data.user) {
-        setErrorDetails('No user data returned');
-        setIsSubmitting(false);
-        return;
+
+      if (!authData.user) {
+        throw new Error('No user data returned from signup');
       }
-      
-      console.log('User created successfully:', data.user.id);
-      console.log('Full user data:', data.user);
-      
-      // Manually create user profile as a fallback in case the trigger didn't work
-      try {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .upsert({
-            id: data.user.id,
-            email: formData.email,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle,
-            organization_id: organizationId
-          }, { onConflict: 'id' });
-          
-        if (profileError) {
-          console.warn('Manual profile creation error (may be redundant if trigger worked):', profileError);
-        } else {
-          console.log('Manual profile creation succeeded or was not needed');
-        }
-      } catch (profileErr) {
-        console.warn('Exception in manual profile creation:', profileErr);
-      }
-      
+
+      console.log('User created successfully:', {
+        userId: authData.user.id,
+        email: authData.user.email
+      });
+
       // Sign out the user after successful registration
       await supabase.auth.signOut();
-      toast.success('Registration successful! You can now log in with your new account.');
+      
+      toast.success('Registration successful! Please check your email for verification and then log in.');
       navigate('/login');
       
     } catch (error: any) {
-      console.error('Unexpected error during registration:', error);
+      console.error('Unexpected registration error:', error);
       setErrorDetails(error.message || 'An unexpected error occurred');
       setIsSubmitting(false);
     }
