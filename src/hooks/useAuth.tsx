@@ -31,29 +31,39 @@ export const useAuth = () => {
       async (event, session) => {
         if (session?.user) {
           try {
-            // Fetch user profile with roles
+            // Fetch user profile
             const { data: profileData, error: profileError } = await supabase
               .from('user_profiles')
-              .select(`
-                *,
-                user_roles (
-                  role_id,
-                  roles (name)
-                )
-              `)
+              .select('*')
               .eq('id', session.user.id)
               .single();
 
             if (profileError) throw profileError;
             
             if (profileData?.organization_id) {
-              // Transform roles data
+              // Fetch user roles in a separate query
+              const { data: userRolesData, error: rolesError } = await supabase
+                .from('user_roles')
+                .select(`
+                  role_id,
+                  roles (id, name)
+                `)
+                .eq('user_id', session.user.id);
+              
+              if (rolesError) {
+                console.error('Error fetching user roles:', rolesError);
+              }
+              
+              // Transform roles data (if roles were fetched successfully)
+              const roles = userRolesData ? userRolesData.map(ur => ({
+                id: ur.role_id,
+                name: ur.roles?.name || ''
+              })) : [];
+              
+              // Create the user profile with roles
               const userProfile: UserProfile = {
                 ...profileData,
-                roles: profileData.user_roles?.map(ur => ({
-                  id: ur.role_id,
-                  name: ur.roles?.name || ''
-                })) || []
+                roles
               };
 
               setOrganizationId(profileData.organization_id);
