@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface UserRole {
+  id: number;
+  name: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string | null;
@@ -12,6 +17,7 @@ export interface UserProfile {
   phone: string | null;
   job_title: string | null;
   organization_id: string;
+  roles?: UserRole[];
 }
 
 export const useAuth = () => {
@@ -25,18 +31,34 @@ export const useAuth = () => {
       async (event, session) => {
         if (session?.user) {
           try {
-            const { data: profile, error } = await supabase
+            // Fetch user profile with roles
+            const { data: profileData, error: profileError } = await supabase
               .from('user_profiles')
-              .select('*')
+              .select(`
+                *,
+                user_roles (
+                  role_id,
+                  roles (name)
+                )
+              `)
               .eq('id', session.user.id)
               .single();
 
-            if (error) throw error;
+            if (profileError) throw profileError;
             
-            if (profile?.organization_id) {
-              setOrganizationId(profile.organization_id);
-              setProfile(profile);
-              navigate(`/dashboard/${profile.organization_id}`);
+            if (profileData?.organization_id) {
+              // Transform roles data
+              const userProfile: UserProfile = {
+                ...profileData,
+                roles: profileData.user_roles?.map(ur => ({
+                  id: ur.role_id,
+                  name: ur.roles?.name || ''
+                })) || []
+              };
+
+              setOrganizationId(profileData.organization_id);
+              setProfile(userProfile);
+              navigate(`/dashboard/${profileData.organization_id}`);
             }
           } catch (error) {
             console.error('Error fetching user profile:', error);
@@ -86,5 +108,17 @@ export const useAuth = () => {
     }
   };
 
-  return { login, logout, isLoading, organizationId, profile };
+  // Helper method to check if user has a specific role
+  const hasRole = (roleName: string) => {
+    return profile?.roles?.some(role => role.name === roleName) || false;
+  };
+
+  return { 
+    login, 
+    logout, 
+    isLoading, 
+    organizationId, 
+    profile,
+    hasRole 
+  };
 };
