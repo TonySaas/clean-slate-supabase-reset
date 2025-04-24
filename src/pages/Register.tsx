@@ -38,7 +38,7 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // Check if the email already exists using simple query instead of admin.listUsers
+      // Check for existing email using a direct query to user_profiles
       const { data: existingUsers, error: checkError } = await supabase
         .from('user_profiles')
         .select('email')
@@ -52,9 +52,20 @@ export default function Register() {
         setIsSubmitting(false);
         return;
       }
+
+      // Explicitly handle the registration in a more robust way
+      console.log('Creating user with data:', {
+        email: formData.email,
+        metadata: {
+          organization_id: organizationId,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          job_title: formData.jobTitle
+        }
+      });
       
-      // Create the user through auth API, including all needed metadata
-      // This will trigger the database function to create profiles and roles
+      // Create the user through auth API with metadata
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -90,6 +101,30 @@ export default function Register() {
       }
       
       console.log('User created successfully:', data.user.id);
+      console.log('Full user data:', data.user);
+      
+      // Manually create user profile as a fallback in case the trigger didn't work
+      try {
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .upsert({
+            id: data.user.id,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle,
+            organization_id: organizationId
+          }, { onConflict: 'id' });
+          
+        if (profileError) {
+          console.warn('Manual profile creation error (may be redundant if trigger worked):', profileError);
+        } else {
+          console.log('Manual profile creation succeeded or was not needed');
+        }
+      } catch (profileErr) {
+        console.warn('Exception in manual profile creation:', profileErr);
+      }
       
       // Sign out the user after successful registration
       await supabase.auth.signOut();
