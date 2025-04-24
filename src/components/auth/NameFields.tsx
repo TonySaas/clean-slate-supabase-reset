@@ -1,5 +1,6 @@
 
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface NameFieldsProps {
   firstName: string;
@@ -17,9 +18,9 @@ export const NameFields = ({
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+        <Label htmlFor="firstName" className="text-gray-700">
           First Name
-        </label>
+        </Label>
         <Input 
           id="firstName" 
           type="text" 
@@ -30,9 +31,9 @@ export const NameFields = ({
         />
       </div>
       <div>
-        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+        <Label htmlFor="lastName" className="text-gray-700">
           Last Name
-        </label>
+        </Label>
         <Input 
           id="lastName" 
           type="text" 

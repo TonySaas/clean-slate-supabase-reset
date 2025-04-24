@@ -1,6 +1,7 @@
 
 import { Input } from '@/components/ui/input';
 import { AlertCircle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 interface ContactFieldsProps {
   email: string;
@@ -24,9 +25,9 @@ export const ContactFields = ({
   return (
     <>
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+        <Label htmlFor="email" className="text-gray-700">
           Email address
-        </label>
+        </Label>
         <Input 
           id="email" 
           type="email" 
@@ -44,9 +45,9 @@ export const ContactFields = ({
         )}
       </div>
       <div>
-        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+        <Label htmlFor="phone" className="text-gray-700">
           Phone Number
-        </label>
+        </Label>
         <Input 
           id="phone" 
           type="tel" 
@@ -56,9 +57,9 @@ export const ContactFields = ({
         />
       </div>
       <div>
-        <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700">
+        <Label htmlFor="jobTitle" className="text-gray-700">
           Job Title
-        </label>
+        </Label>
         <Input 
           id="jobTitle" 
           type="text" 

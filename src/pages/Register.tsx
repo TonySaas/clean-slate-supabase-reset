@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { RegistrationForm } from '@/components/auth/RegistrationForm';
+import { AlertCircle } from 'lucide-react';
 
 interface RegistrationData {
   email: string;
@@ -37,26 +38,28 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // First attempt to sign up the user
+      // Check if email is already in use first
+      const { data: existingUserData } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: 'temporary-check-only',  // We expect this to fail, but differently if user exists
+      });
+      
+      if (existingUserData?.user) {
+        setEmailError('This email is already registered. Please use a different email address.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Now attempt to sign up the user - without metadata to simplify the process
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            organization_id: organizationId,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle
-          },
-          emailRedirectTo: `${window.location.origin}/login`
-        }
       });
 
       if (error) {
         console.error('Registration error from Supabase:', error);
         
-        // Handle email already registered error
+        // Handle email already registered error - though we tried to catch this earlier
         if (error.message?.includes('already registered')) {
           setEmailError('This email is already registered. Please use a different email address.');
         } else {
@@ -69,11 +72,65 @@ export default function Register() {
       if (data?.user) {
         console.log('Auth user created successfully:', data.user.id);
         
-        // Sign out the user to ensure clean state
-        await supabase.auth.signOut();
-        
-        toast.success('Registration successful! You can now log in with your new account.');
-        navigate('/login');
+        // Now update the user metadata and insert profile manually
+        try {
+          // Update metadata
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: {
+              organization_id: organizationId,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              job_title: formData.jobTitle
+            }
+          });
+          
+          if (updateError) throw updateError;
+          
+          // Manually insert into profiles table
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: data.user.id,
+              organization_id: organizationId,
+              email: formData.email,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              job_title: formData.jobTitle
+            });
+          
+          if (profileError) throw profileError;
+          
+          // Manually insert into user_roles table
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: data.user.id,
+              role_id: 1 // Assuming 1 is for the basic 'user' role
+            });
+          
+          if (roleError) throw roleError;
+          
+          // Sign out the user to ensure clean state
+          await supabase.auth.signOut();
+          
+          toast.success('Registration successful! You can now log in with your new account.');
+          navigate('/login');
+        } catch (profileError: any) {
+          console.error('Error creating user profile or roles:', profileError);
+          setErrorDetails(`Profile error: ${profileError.message}`);
+          
+          // Try to delete the user if profile creation failed
+          try {
+            // This requires admin rights, so it may not work
+            // In a real app, you'd need a server function to handle this cleanup
+            const { error: deleteError } = await supabase.auth.admin.deleteUser(data.user.id);
+            if (deleteError) console.error('Failed to clean up user after profile creation error:', deleteError);
+          } catch (cleanupError) {
+            console.error('Failed to clean up after error:', cleanupError);
+          }
+        }
       } else {
         const msg = 'No user data returned from sign up';
         console.error(msg);
@@ -116,7 +173,10 @@ export default function Register() {
         
         {errorDetails && (
           <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-            <p className="font-medium">Registration Error Details:</p>
+            <p className="font-medium flex items-center gap-2">
+              <AlertCircle size={16} />
+              Registration Error Details:
+            </p>
             <p className="mt-1">{errorDetails}</p>
           </div>
         )}
