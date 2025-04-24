@@ -38,28 +38,37 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // Check if email is already in use first
-      const { data: existingUserData } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: 'temporary-check-only',  // We expect this to fail, but differently if user exists
-      });
-      
-      if (existingUserData?.user) {
+      // Check if email is already registered
+      const { data: emailCheckData, error: emailCheckError } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('email', formData.email)
+        .maybeSingle();
+        
+      if (emailCheckData) {
         setEmailError('This email is already registered. Please use a different email address.');
         setIsSubmitting(false);
         return;
       }
       
-      // Now attempt to sign up the user - without metadata to simplify the process
+      // Create the auth user
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          data: {
+            organization_id: organizationId,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle
+          }
+        }
       });
 
       if (error) {
-        console.error('Registration error from Supabase:', error);
+        console.error('Registration error:', error);
         
-        // Handle email already registered error - though we tried to catch this earlier
         if (error.message?.includes('already registered')) {
           setEmailError('This email is already registered. Please use a different email address.');
         } else {
@@ -70,24 +79,13 @@ export default function Register() {
       }
 
       if (data?.user) {
-        console.log('Auth user created successfully:', data.user.id);
+        console.log('User created successfully:', data.user.id);
         
-        // Now update the user metadata and insert profile manually
+        // Wait a short time to ensure auth user is fully created in the database
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         try {
-          // Update metadata
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: {
-              organization_id: organizationId,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              phone: formData.phone,
-              job_title: formData.jobTitle
-            }
-          });
-          
-          if (updateError) throw updateError;
-          
-          // Manually insert into profiles table
+          // Manually insert into profiles table as fallback
           const { error: profileError } = await supabase
             .from('user_profiles')
             .insert({
@@ -100,9 +98,14 @@ export default function Register() {
               job_title: formData.jobTitle
             });
           
-          if (profileError) throw profileError;
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            if (!profileError.message.includes('duplicate key')) {
+              throw profileError;
+            }
+          }
           
-          // Manually insert into user_roles table
+          // If successfully created the profile, assign user role
           const { error: roleError } = await supabase
             .from('user_roles')
             .insert({
@@ -110,43 +113,32 @@ export default function Register() {
               role_id: 1 // Assuming 1 is for the basic 'user' role
             });
           
-          if (roleError) throw roleError;
+          if (roleError) {
+            console.error('Role assignment error:', roleError);
+            // Continue even if role assignment fails - we can fix it later
+          }
           
           // Sign out the user to ensure clean state
           await supabase.auth.signOut();
           
           toast.success('Registration successful! You can now log in with your new account.');
           navigate('/login');
-        } catch (profileError: any) {
-          console.error('Error creating user profile or roles:', profileError);
-          setErrorDetails(`Profile error: ${profileError.message}`);
+        } catch (err: any) {
+          console.error('Error in profile/role creation:', err);
+          setErrorDetails(`Profile error: ${err.message}`);
           
-          // Try to delete the user if profile creation failed
-          try {
-            // This requires admin rights, so it may not work
-            // In a real app, you'd need a server function to handle this cleanup
-            const { error: deleteError } = await supabase.auth.admin.deleteUser(data.user.id);
-            if (deleteError) console.error('Failed to clean up user after profile creation error:', deleteError);
-          } catch (cleanupError) {
-            console.error('Failed to clean up after error:', cleanupError);
-          }
+          // We won't try to delete the auth user as that requires admin rights
+          // But we'll let the user know there was an issue with profile creation
+          toast.error('Account created but there was an issue with profile setup. Please contact support.');
         }
       } else {
-        const msg = 'No user data returned from sign up';
-        console.error(msg);
-        setErrorDetails(msg);
-        throw new Error(msg);
+        setErrorDetails('No user data returned from sign up');
+        throw new Error('No user data returned');
       }
     } catch (error: any) {
       console.error('Registration process failed:', error);
       
-      // Handle specific error cases with more user-friendly messages
-      if (error.message?.includes('Database error') || error.message?.includes('foreign key constraint')) {
-        toast.error('Registration failed', {
-          description: 'There was an issue creating your profile. Please try again with a different email address.'
-        });
-      } else if (!emailError) {
-        // Only show general toast if we don't have a specific email error
+      if (!emailError) {
         toast.error('Registration failed', {
           description: error.message || 'An unexpected error occurred'
         });
