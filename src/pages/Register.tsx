@@ -12,6 +12,10 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const organizationId = searchParams.get('organization');
 
@@ -36,7 +40,11 @@ export default function Register() {
         password,
         options: {
           data: {
-            organization_id: organizationId
+            organization_id: organizationId,
+            first_name: firstName,
+            last_name: lastName,
+            phone: phone,
+            job_title: jobTitle
           }
         }
       });
@@ -64,6 +72,34 @@ export default function Register() {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                  First Name
+                </label>
+                <Input 
+                  id="firstName" 
+                  type="text" 
+                  required 
+                  value={firstName} 
+                  onChange={e => setFirstName(e.target.value)} 
+                  placeholder="Enter your first name" 
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                  Last Name
+                </label>
+                <Input 
+                  id="lastName" 
+                  type="text" 
+                  required 
+                  value={lastName} 
+                  onChange={e => setLastName(e.target.value)} 
+                  placeholder="Enter your last name" 
+                />
+              </div>
+            </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
@@ -75,6 +111,30 @@ export default function Register() {
                 value={email} 
                 onChange={e => setEmail(e.target.value)} 
                 placeholder="Enter your email" 
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <Input 
+                id="phone" 
+                type="tel" 
+                value={phone} 
+                onChange={e => setPhone(e.target.value)} 
+                placeholder="Enter your phone number" 
+              />
+            </div>
+            <div>
+              <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700">
+                Job Title
+              </label>
+              <Input 
+                id="jobTitle" 
+                type="text" 
+                value={jobTitle} 
+                onChange={e => setJobTitle(e.target.value)} 
+                placeholder="Enter your job title" 
               />
             </div>
             <div>
