@@ -38,29 +38,7 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // Check if email already exists by attempting to sign in
-      // This is a workaround since we can't use admin.listUsers on the client
-      const { error: emailCheckError } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          shouldCreateUser: false
-        }
-      });
-      
-      // If there's no error when trying to sign in with OTP and shouldCreateUser is false,
-      // it means the email exists
-      if (!emailCheckError) {
-        setEmailError('This email is already registered. Please use a different email address.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // If there's an error but it's not about the user not existing, handle that separately
-      if (emailCheckError && !emailCheckError.message.includes('user not found')) {
-        console.log('Email check error:', emailCheckError);
-      }
-      
-      // Create the auth user
+      // Simplified approach - try to sign up directly and handle specific errors
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -70,7 +48,7 @@ export default function Register() {
             last_name: formData.lastName,
             phone: formData.phone,
             job_title: formData.jobTitle,
-            organization_id: organizationId,
+            organization_id: organizationId
           }
         }
       });
@@ -78,17 +56,18 @@ export default function Register() {
       if (error) {
         console.error('Registration error:', error);
         
-        if (error.message?.includes('already registered')) {
+        if (error.message?.toLowerCase().includes('user already registered') || 
+            error.message?.toLowerCase().includes('already exists')) {
           setEmailError('This email is already registered. Please use a different email address.');
         } else {
-          setErrorDetails(error.message || 'Unknown error occurred');
+          setErrorDetails(error.message || 'Unknown error occurred during registration');
         }
         
         setIsSubmitting(false);
         return;
       }
       
-      if (!data.user || !data.user.id) {
+      if (!data.user) {
         setErrorDetails('No user data returned');
         setIsSubmitting(false);
         return;
@@ -96,7 +75,7 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Create the user profile explicitly
+      // Create the user profile
       const { error: profileError } = await supabase
         .from('user_profiles')
         .insert({
@@ -112,11 +91,14 @@ export default function Register() {
       if (profileError) {
         console.error('Error creating user profile:', profileError);
         setErrorDetails(`Failed to create user profile: ${profileError.message}`);
+        
+        // Since user was created but profile failed, we should sign out
+        await supabase.auth.signOut();
         setIsSubmitting(false);
         return;
       }
       
-      // Create user role
+      // Create user role - user role ID 2
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
@@ -125,8 +107,9 @@ export default function Register() {
         });
       
       if (roleError) {
-        console.error('Error creating user role:', roleError);
-        // Continue even if role assignment fails
+        console.error('Error assigning user role:', roleError);
+        // We'll continue with registration even if role assignment fails
+        // but log the error for troubleshooting
       }
       
       // Sign out and redirect to login
@@ -134,7 +117,7 @@ export default function Register() {
       toast.success('Registration successful! You can now log in with your new account.');
       navigate('/login');
     } catch (error: any) {
-      console.error('Registration process failed:', error);
+      console.error('Unexpected error during registration:', error);
       setErrorDetails(error.message || 'An unexpected error occurred');
       setIsSubmitting(false);
     }
@@ -159,7 +142,7 @@ export default function Register() {
           <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
             <p className="font-medium flex items-center gap-2">
               <AlertCircle size={16} />
-              Registration Error Details:
+              Registration Error:
             </p>
             <p className="mt-1">{errorDetails}</p>
           </div>
