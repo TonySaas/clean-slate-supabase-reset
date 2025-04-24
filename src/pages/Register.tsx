@@ -43,10 +43,12 @@ export default function Register() {
         .from('user_profiles')
         .select('email')
         .eq('email', formData.email)
-        .maybeSingle();
+        .single();
         
-      if (emailCheckError) {
+      if (emailCheckError && emailCheckError.code !== 'PGRST116') {
+        // PGRST116 means "no rows returned" which is what we want
         console.error('Error checking email:', emailCheckError);
+        throw new Error(`Email check failed: ${emailCheckError.message}`);
       }
       
       if (existingProfile) {
@@ -55,17 +57,15 @@ export default function Register() {
         return;
       }
       
-      // Create auth user with metadata
+      // Create the user with auth.signUp but DON'T try to add profile or role data here
+      // We'll do that after confirming the user was created successfully
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
+          // Only include minimal metadata for now
           data: {
             organization_id: organizationId,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle,
           }
         }
       });
@@ -83,7 +83,7 @@ export default function Register() {
         return;
       }
       
-      if (!data.user) {
+      if (!data.user || !data.user.id) {
         setErrorDetails('No user data returned');
         setIsSubmitting(false);
         return;
@@ -91,18 +91,22 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
 
-      // Let's directly insert the profile manually
+      // Now that user is created, insert into user_profiles manually
       try {
+        // Wait a moment to ensure the auth user is fully created
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Now create the profile
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert({
             id: data.user.id,
-            organization_id: organizationId,
             email: formData.email,
             first_name: formData.firstName,
             last_name: formData.lastName,
             phone: formData.phone,
-            job_title: formData.jobTitle
+            job_title: formData.jobTitle,
+            organization_id: organizationId
           });
         
         if (profileError) {
@@ -112,7 +116,7 @@ export default function Register() {
           return;
         }
         
-        // Assign user role
+        // Now create the user role
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({
