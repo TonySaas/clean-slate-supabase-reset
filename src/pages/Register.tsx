@@ -38,19 +38,26 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // First check if email already exists
-      const { data: existingUsers, error: emailCheckError } = await supabase.auth.admin.listUsers({
-        filter: {
-          email: formData.email
+      // Check if email already exists by attempting to sign in
+      // This is a workaround since we can't use admin.listUsers on the client
+      const { error: emailCheckError } = await supabase.auth.signInWithOtp({
+        email: formData.email,
+        options: {
+          shouldCreateUser: false
         }
       });
-
-      if (emailCheckError) {
-        console.error('Error checking existing email:', emailCheckError);
-      } else if (existingUsers && existingUsers.users.length > 0) {
+      
+      // If there's no error when trying to sign in with OTP and shouldCreateUser is false,
+      // it means the email exists
+      if (!emailCheckError) {
         setEmailError('This email is already registered. Please use a different email address.');
         setIsSubmitting(false);
         return;
+      }
+
+      // If there's an error but it's not about the user not existing, handle that separately
+      if (emailCheckError && !emailCheckError.message.includes('user not found')) {
+        console.log('Email check error:', emailCheckError);
       }
       
       // Create the auth user
