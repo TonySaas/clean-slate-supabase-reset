@@ -75,6 +75,9 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
+      // Wait a moment to ensure the auth user is fully created
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Create the user profile
       const { error: profileError } = await supabase
         .from('user_profiles')
@@ -98,12 +101,27 @@ export default function Register() {
         return;
       }
       
-      // Create user role - user role ID 2
+      // At this point, the profile should be created, so we can create the role
+      // Instead of using role_id 2, let's query for the correct role ID
+      const { data: roleData, error: roleQueryError } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'user')
+        .single();
+        
+      if (roleQueryError) {
+        console.error('Error finding user role:', roleQueryError);
+        // Continue with registration but log the error
+      }
+      
+      const roleId = roleData?.id || 2; // Fallback to 2 if query failed
+      
+      // Create user role
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: data.user.id,
-          role_id: 2  // Assuming 2 is the 'user' role ID
+          role_id: roleId
         });
       
       if (roleError) {
