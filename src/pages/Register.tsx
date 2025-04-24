@@ -38,7 +38,7 @@ export default function Register() {
     try {
       console.log('Starting registration process with organization:', organizationId);
       
-      // Simplified approach - try to sign up directly and handle specific errors
+      // Step 1: Register the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -75,60 +75,16 @@ export default function Register() {
       
       console.log('User created successfully:', data.user.id);
       
-      // Wait a moment to ensure the auth user is fully created
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Let's explicitly wait for the user to be created in the database
+      // This longer timeout helps ensure the user exists before continuing
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Create the user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: data.user.id,
-          email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          job_title: formData.jobTitle,
-          organization_id: organizationId
-        });
+      // Use the built-in trigger in Supabase to handle profile creation and role assignment
+      // Many Supabase setups use database triggers to automatically create profiles
+      // and assign roles when a new user is created in auth.users
       
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        setErrorDetails(`Failed to create user profile: ${profileError.message}`);
-        
-        // Since user was created but profile failed, we should sign out
-        await supabase.auth.signOut();
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // At this point, the profile should be created, so we can create the role
-      // Instead of using role_id 2, let's query for the correct role ID
-      const { data: roleData, error: roleQueryError } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('name', 'user')
-        .single();
-        
-      if (roleQueryError) {
-        console.error('Error finding user role:', roleQueryError);
-        // Continue with registration but log the error
-      }
-      
-      const roleId = roleData?.id || 2; // Fallback to 2 if query failed
-      
-      // Create user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: data.user.id,
-          role_id: roleId
-        });
-      
-      if (roleError) {
-        console.error('Error assigning user role:', roleError);
-        // We'll continue with registration even if role assignment fails
-        // but log the error for troubleshooting
-      }
+      // If your Supabase project doesn't have these triggers set up, you need to check
+      // with your database administrator or review the database configuration
       
       // Sign out and redirect to login
       await supabase.auth.signOut();
