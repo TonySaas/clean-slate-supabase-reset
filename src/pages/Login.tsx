@@ -61,9 +61,10 @@ export default function Login() {
     navigate(`/register?organization=${organizationId}`);
   };
   
-  const handleRegisterClick = async () => {
+  const handleRegisterClick = () => {
     console.log('Register button clicked, checking organizations...');
-    await checkOrganizationsExist();
+    // Direct function call, no async/await
+    checkOrganizationsExist();
   };
 
   // If user is already authenticated and has an organization, redirect to dashboard

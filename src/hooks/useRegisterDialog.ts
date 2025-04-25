@@ -40,11 +40,9 @@ export const useRegisterDialog = () => {
       setIsRegisterDialogOpen(true);
       setIsCheckingOrgs(false);
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Organization check error:", error);
-      toast.error("Unable to check organizations", {
-        description: error.message || "Please try again"
-      });
+      toast.error("Unable to check organizations");
       setIsCheckingOrgs(false);
       return false;
     }
