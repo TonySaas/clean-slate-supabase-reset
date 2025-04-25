@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useOrganizations } from '@/hooks/useOrganizations';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Login() {
   const { login, isLoading, organizationId } = useAuth();
@@ -16,7 +17,7 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
-  const { data: organizations, isLoading: isLoadingOrgs } = useOrganizations();
+  const { data: organizations, isLoading: isLoadingOrgs, error: orgsError, refetch: refetchOrgs } = useOrganizations();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
@@ -35,6 +36,13 @@ export default function Login() {
       navigate(`/dashboard/${organizationId}`, { replace: true });
     }
   }, [organizationId, isLoading, navigate]);
+
+  // Fetch organizations when dialog opens
+  useEffect(() => {
+    if (isRegisterDialogOpen) {
+      refetchOrgs();
+    }
+  }, [isRegisterDialogOpen, refetchOrgs]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +68,42 @@ export default function Login() {
   const handleRegister = (organizationId: string) => {
     setIsRegisterDialogOpen(false);
     navigate(`/register?organization=${organizationId}`);
+  };
+
+  // Check if there are any organizations in the database
+  const checkOrganizationsExist = async () => {
+    try {
+      // If we don't have organizations data yet, fetch directly
+      if (!organizations || organizations.length === 0) {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .limit(1);
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          toast.error("No organizations found", {
+            description: "Please contact an administrator to set up organizations"
+          });
+          return false;
+        }
+        return true;
+      }
+      
+      return organizations.length > 0;
+    } catch (error) {
+      console.error("Error checking organizations:", error);
+      toast.error("Failed to check organizations");
+      return false;
+    }
+  };
+
+  const handleOpenRegisterDialog = async () => {
+    const hasOrgs = await checkOrganizationsExist();
+    if (hasOrgs) {
+      setIsRegisterDialogOpen(true);
+    }
   };
 
   if (organizationId && !isLoading) {
@@ -119,7 +163,7 @@ export default function Login() {
               type="button" 
               variant="outline" 
               className="w-full"
-              onClick={() => setIsRegisterDialogOpen(true)}
+              onClick={handleOpenRegisterDialog}
             >
               Register
             </Button>
@@ -135,11 +179,33 @@ export default function Login() {
               Choose an organization to register with
             </DialogDescription>
           </DialogHeader>
+          
           <div className="grid gap-4 py-4">
             {isLoadingOrgs ? (
-              <p className="text-center text-gray-500">Loading organizations...</p>
+              <p className="text-center text-gray-500 py-4">Loading organizations...</p>
+            ) : orgsError ? (
+              <div className="p-4 bg-red-50 border border-red-200 rounded text-center">
+                <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
+                <p className="text-red-700">Failed to load organizations</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2" 
+                  onClick={() => refetchOrgs()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : !organizations || organizations.length === 0 ? (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded text-center">
+                <AlertCircle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
+                <p className="text-amber-700">No organizations found</p>
+                <p className="text-sm text-amber-600 mt-1">
+                  Please contact an administrator to set up organizations
+                </p>
+              </div>
             ) : (
-              organizations?.map((org) => (
+              organizations.map((org) => (
                 <Button
                   key={org.id}
                   variant="outline"
@@ -152,6 +218,10 @@ export default function Login() {
                         src={org.logo_url} 
                         alt={org.name} 
                         className="w-8 h-8 object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'placeholder.svg';
+                        }}
                       />
                     )}
                     <span>{org.name}</span>

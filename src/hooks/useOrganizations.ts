@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ export const useOrganizations = () => {
     queryKey: ['organizations'],
     queryFn: async (): Promise<Organization[]> => {
       try {
+        console.log('Fetching organizations data');
         const { data: orgsData, error: orgsError } = await supabase
           .from('organizations')
           .select('id, name, logo_url, primary_color, created_at, updated_at');
@@ -46,10 +48,10 @@ export const useOrganizations = () => {
         return organizations;
       } catch (error) {
         console.error("Error in useOrganizations:", error);
-        toast.error("Failed to load organizations");
         throw error;
       }
     },
     retry: 1,
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 };
