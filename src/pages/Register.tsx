@@ -30,70 +30,6 @@ export default function Register() {
     }
   }, [organizationId, navigate]);
 
-  const createUserProfile = async (userId: string, userData: RegistrationData) => {
-    console.log('Creating user profile for:', userId, userData);
-    
-    try {
-      // First check if profile already exists
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('id', userId)
-        .single();
-        
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking profile:', checkError);
-        throw checkError;
-      }
-      
-      if (existingProfile) {
-        console.log('Profile already exists:', existingProfile);
-        return existingProfile;
-      }
-
-      // Create user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: userId,
-          email: userData.email,
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone,
-          job_title: userData.jobTitle,
-          organization_id: organizationId
-        })
-        .select();
-        
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        throw profileError;
-      }
-
-      console.log('Profile created successfully:', profileData);
-      
-      // Add default user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: userId,
-          role_id: 1 // Assuming 1 is the default 'user' role
-        });
-        
-      if (roleError) {
-        console.error('Error creating user role:', roleError);
-        throw roleError;
-      }
-      
-      console.log('User role added successfully');
-      
-      return profileData;
-    } catch (error) {
-      console.error('Error in profile creation:', error);
-      throw error;
-    }
-  };
-
   const handleSubmit = async (formData: RegistrationData) => {
     setErrorDetails(null);
     setEmailError(null);
@@ -143,16 +79,22 @@ export default function Register() {
         email: authData.user.email
       });
       
-      // CRITICAL: Always manually create user profile
-      await createUserProfile(authData.user.id, formData);
-
-      // Sign out the user after successful registration
-      await supabase.auth.signOut();
+      // Sign in the user immediately after successful registration
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
       
-      toast.success('Registration successful! Please log in to continue.');
+      if (signInError) {
+        console.error('Auto sign-in error:', signInError);
+        toast.success('Registration successful! Please log in to continue.');
+        navigate('/login?registered=true');
+        return;
+      }
       
-      // Redirect to login page with success message
-      navigate('/login?registered=true');
+      // Redirect to dashboard with organization ID
+      toast.success('Registration successful!');
+      navigate(`/dashboard/${organizationId}`);
       
     } catch (error: any) {
       console.error('Unexpected registration error:', error);

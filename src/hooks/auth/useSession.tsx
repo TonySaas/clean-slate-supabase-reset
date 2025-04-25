@@ -18,11 +18,7 @@ export const useSession = () => {
         
         if (session?.user) {
           try {
-            // Get user metadata
-            const metadata = session.user.user_metadata || {};
-            console.log('User metadata:', metadata);
-            
-            // Ensure user profile exists
+            // First, check if user has a profile
             const { data: userProfile, error: profileError } = await supabase
               .from('user_profiles')
               .select('*')
@@ -31,9 +27,43 @@ export const useSession = () => {
             
             if (profileError) {
               console.error('Error fetching user profile:', profileError);
-              toast.error('Error loading user profile');
-              setIsLoading(false);
-              return;
+              
+              // If error is PGRST116 (not found), create the profile
+              if (profileError.code === 'PGRST116') {
+                console.log('User profile not found, creating new profile');
+                const metadata = session.user.user_metadata || {};
+                
+                const { data: newProfile, error: createError } = await supabase
+                  .from('user_profiles')
+                  .insert({
+                    id: session.user.id,
+                    email: session.user.email,
+                    first_name: metadata.first_name,
+                    last_name: metadata.last_name,
+                    phone: metadata.phone,
+                    job_title: metadata.job_title,
+                    organization_id: metadata.organization_id || (
+                      // Fallback to get any organization if none specified
+                      await supabase.from('organizations').select('id').limit(1).single()
+                    ).data?.id
+                  })
+                  .select()
+                  .single();
+                
+                if (createError) {
+                  console.error('Error creating user profile:', createError);
+                  toast.error('Error creating user profile');
+                  setIsLoading(false);
+                  return;
+                }
+                
+                console.log('Created new profile:', newProfile);
+                const userProfile = newProfile;
+              } else {
+                toast.error('Error loading user profile');
+                setIsLoading(false);
+                return;
+              }
             }
             
             if (!userProfile.organization_id) {
