@@ -1,10 +1,11 @@
 
 import { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { LogOut } from 'lucide-react';
 
 interface Organization {
   id: string;
@@ -38,6 +39,11 @@ export default function Dashboard() {
     }
   }, [organizationId]);
 
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Logged out successfully');
+  };
+
   // Redirect if not logged in or wrong organization
   if (!isLoading && (!userOrgId || userOrgId !== organizationId)) {
     return <Navigate to="/login" replace />;
@@ -58,16 +64,26 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-gray-900">
             {organization.name} Dashboard
           </h1>
-          <Button onClick={logout} variant="outline">
+          <Button onClick={handleLogout} variant="outline" className="flex items-center gap-2">
+            <LogOut size={16} />
             Sign out
           </Button>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             Welcome to your organization's dashboard!
           </p>
+          <div className="border-t pt-4 mt-4">
+            <h2 className="text-lg font-medium mb-2">Testing Options</h2>
+            <div className="flex flex-col space-y-2">
+              <Button variant="destructive" onClick={handleLogout} className="flex items-center gap-2 w-fit">
+                <LogOut size={16} />
+                Sign out to test registration/login
+              </Button>
+            </div>
+          </div>
         </div>
       </main>
     </div>
