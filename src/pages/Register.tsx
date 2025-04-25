@@ -79,57 +79,45 @@ export default function Register() {
         email: authData.user.email
       });
       
-      // Explicitly create user profile with a retry mechanism
-      let profileCreated = false;
-      let retryCount = 0;
-      const maxRetries = 3;
+      // Wait a moment to ensure auth triggers have time to run
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      while (!profileCreated && retryCount < maxRetries) {
-        try {
-          // First check if profile already exists
-          const { data: existingProfile } = await supabase
-            .from('user_profiles')
-            .select('id')
-            .eq('id', authData.user.id)
-            .single();
-            
-          if (existingProfile) {
-            console.log('User profile already exists, skipping creation');
-            profileCreated = true;
-          } else {
-            // Create user profile manually
-            const { error: profileError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: authData.user.id,
-                organization_id: organizationId,
-                email: formData.email,
-                first_name: formData.firstName,
-                last_name: formData.lastName,
-                phone: formData.phone,
-                job_title: formData.jobTitle
-              });
-              
-            if (profileError) {
-              console.error(`Error creating user profile (attempt ${retryCount + 1}):`, profileError);
-              retryCount++;
-              // Wait before retrying
-              await new Promise(resolve => setTimeout(resolve, 500));
-            } else {
-              console.log('User profile created manually successfully');
-              profileCreated = true;
-            }
-          }
-        } catch (err) {
-          console.error(`Error in profile creation attempt ${retryCount + 1}:`, err);
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
+      // Check if user profile exists
+      const { data: existingProfile, error: profileCheckError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', authData.user.id)
+        .single();
+        
+      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+        console.error('Error checking for profile:', profileCheckError);
       }
       
-      if (!profileCreated) {
-        console.error('Failed to create user profile after multiple attempts');
-        // Continue anyway, as we'll try to recover later
+      // If profile doesn't exist, create it directly
+      if (!existingProfile) {
+        console.log('No profile found, creating one manually');
+        
+        // Explicitly create user profile
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            organization_id: organizationId,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle
+          });
+          
+        if (profileError) {
+          console.error('Failed to create user profile:', profileError);
+          // Continue anyway, as we'll try to recover in useSession
+        } else {
+          console.log('User profile created successfully');
+        }
+      } else {
+        console.log('User profile already exists, skipping creation');
       }
       
       // Assign a basic user role

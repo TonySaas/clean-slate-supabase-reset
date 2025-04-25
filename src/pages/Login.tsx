@@ -32,8 +32,8 @@ export default function Login() {
     }
   }, [searchParams]);
 
+  // Use this effect to redirect only if user is fully authenticated with organization
   useEffect(() => {
-    // If user is authenticated and has an organization, redirect to dashboard
     if (organizationId && !authLoading) {
       console.log('User authenticated with organization, redirecting to dashboard:', organizationId);
       navigate(`/dashboard/${organizationId}`, { replace: true });
