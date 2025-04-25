@@ -14,6 +14,7 @@ export const useRegisterDialog = () => {
     }
   }, [isRegisterDialogOpen, refetch]);
 
+  // Clear any timeout when component unmounts or when checking status changes
   useEffect(() => {
     let timeoutId: number | undefined;
     
@@ -32,6 +33,9 @@ export const useRegisterDialog = () => {
   }, [isCheckingOrgs]);
 
   const checkOrganizationsExist = async () => {
+    // If already checking, don't start another check
+    if (isCheckingOrgs) return false;
+    
     setIsCheckingOrgs(true);
     
     try {
@@ -42,8 +46,13 @@ export const useRegisterDialog = () => {
         return true;
       }
       
-      // If not, refetch from the server
-      const result = await refetch();
+      // If not, refetch from the server with a shorter timeout
+      const result = await Promise.race([
+        refetch(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Fetch timeout")), 5000)
+        )
+      ]) as any;
       
       if (result.error) {
         console.error("Error fetching organizations:", result.error);
@@ -62,7 +71,7 @@ export const useRegisterDialog = () => {
       setIsRegisterDialogOpen(true);
       setIsCheckingOrgs(false);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking organizations:", error);
       toast.error("Failed to check organizations", {
         description: "Please try again or contact support"

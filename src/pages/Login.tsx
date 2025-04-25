@@ -60,6 +60,17 @@ export default function Login() {
     setIsRegisterDialogOpen(false);
     navigate(`/register?organization=${organizationId}`);
   };
+  
+  const handleRegisterClick = async () => {
+    // Prevent multiple clicks
+    if (isCheckingOrgs) return;
+    
+    try {
+      await checkOrganizationsExist();
+    } catch (error) {
+      console.error("Failed to check organizations:", error);
+    }
+  };
 
   if (organizationId && !authLoading) {
     console.log('Redirecting to dashboard in render with org ID:', organizationId);
@@ -82,7 +93,7 @@ export default function Login() {
             type="button" 
             variant="outline" 
             className="w-full"
-            onClick={() => checkOrganizationsExist()}
+            onClick={handleRegisterClick}
             disabled={isCheckingOrgs}
           >
             {isCheckingOrgs ? (
