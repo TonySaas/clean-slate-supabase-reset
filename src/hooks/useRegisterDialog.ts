@@ -14,60 +14,40 @@ export const useRegisterDialog = () => {
     }
   }, [isRegisterDialogOpen, refetch]);
 
-  // Clear any timeout when component unmounts or when checking status changes
-  useEffect(() => {
-    let timeoutId: number | undefined;
-    
-    if (isCheckingOrgs) {
-      timeoutId = window.setTimeout(() => {
-        setIsCheckingOrgs(false);
-        toast.error("Operation timed out", {
-          description: "Failed to check organizations. Please try again."
-        });
-      }, 5000); // Reduced timeout to 5 seconds
-    }
-    
-    return () => {
-      if (timeoutId) window.clearTimeout(timeoutId);
-    };
-  }, [isCheckingOrgs]);
-
   const checkOrganizationsExist = async () => {
-    // If already checking, don't start another check
-    if (isCheckingOrgs) return false;
+    if (isCheckingOrgs) {
+      toast.info("Please wait...");
+      return false;
+    }
     
     setIsCheckingOrgs(true);
     
     try {
-      // First check if we already have organizations in cache
+      // First try to use cached data
       if (organizations && organizations.length > 0) {
         setIsRegisterDialogOpen(true);
-        setIsCheckingOrgs(false);
         return true;
       }
       
-      // Clear the cache before refetching
-      await refetch({ throwOnError: true });
+      // If no cached data, fetch fresh data
+      const { data } = await refetch();
       
-      // Check if organizations exist after refetch
-      if (!organizations || organizations.length === 0) {
-        toast.error("No organizations found", {
-          description: "Please contact an administrator to set up organizations"
+      if (!data || data.length === 0) {
+        toast.error("No organizations available", {
+          description: "Please contact an administrator"
         });
         return false;
       }
       
-      // If we have organizations, open the dialog
       setIsRegisterDialogOpen(true);
       return true;
     } catch (error: any) {
-      console.error("Error checking organizations:", error);
-      toast.error("Failed to check organizations", {
-        description: "Please try again or contact support"
+      console.error("Organization check error:", error);
+      toast.error("Unable to check organizations", {
+        description: "Please try again"
       });
       return false;
     } finally {
-      // Always reset checking state
       setIsCheckingOrgs(false);
     }
   };

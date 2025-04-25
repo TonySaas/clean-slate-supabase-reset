@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,20 +21,18 @@ export default function Login() {
     checkOrganizationsExist,
     organizations,
     isLoading: isLoadingOrgs,
-    error: orgsError,
-    refetch: refetchOrgs
+    error: orgsError
   } = useRegisterDialog();
 
   useEffect(() => {
     const justRegistered = searchParams.get('registered');
     if (justRegistered === 'true') {
-      toast.success('Registration successful! Please log in to continue.');
+      toast.success('Registration successful! Please log in.');
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (organizationId && !authLoading) {
-      console.log('User already logged in, redirecting to dashboard with org ID:', organizationId);
       navigate(`/dashboard/${organizationId}`, { replace: true });
     }
   }, [organizationId, authLoading, navigate]);
@@ -41,13 +40,11 @@ export default function Login() {
   const handleLogin = async (email: string, password: string) => {
     try {
       setIsSubmitting(true);
-      console.log('Attempting login for:', email);
       await login(email, password);
-      console.log('Login function completed');
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error('Login failed', {
-        description: error.message || 'Please check your credentials and try again'
+        description: error.message || 'Please check your credentials'
       });
       throw error;
     } finally {
@@ -60,27 +57,11 @@ export default function Login() {
     navigate(`/register?organization=${organizationId}`);
   };
   
-  const handleRegisterClick = () => {
-    // Prevent multiple clicks
-    if (isCheckingOrgs) {
-      toast.info("Still checking for organizations...", {
-        description: "Please wait a moment"
-      });
-      return;
-    }
-    
-    toast.info("Checking for organizations...");
-    
-    checkOrganizationsExist().catch(error => {
-      console.error("Failed to check organizations:", error);
-      toast.error("Couldn't verify organizations", {
-        description: "Please try again in a moment"
-      });
-    });
+  const handleRegisterClick = async () => {
+    await checkOrganizationsExist();
   };
 
   if (organizationId && !authLoading) {
-    console.log('Redirecting to dashboard in render with org ID:', organizationId);
     return <Navigate to={`/dashboard/${organizationId}`} replace />;
   }
 
@@ -105,8 +86,8 @@ export default function Login() {
           >
             {isCheckingOrgs ? (
               <>
-                <Loader2 size={16} className="mr-2 animate-spin" />
-                Checking organizations...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
               </>
             ) : 'Register'}
           </Button>
@@ -120,7 +101,6 @@ export default function Login() {
         isLoading={isLoadingOrgs}
         error={orgsError}
         onSelectOrganization={handleRegister}
-        onRefetch={refetchOrgs}
       />
     </div>
   );
