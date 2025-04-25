@@ -85,56 +85,48 @@ export default function Register() {
         email: authData.user.email
       });
       
-      // Fallback: Manually create user profile if trigger didn't work
+      // IMPORTANT: Always manually create user profile to ensure it exists
       try {
-        // Check if profile exists
-        const { data: existingProfile } = await supabase
+        const { error: profileError } = await supabase
           .from('user_profiles')
-          .select('id')
-          .eq('id', authData.user.id)
-          .single();
+          .insert({
+            id: authData.user.id,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle,
+            organization_id: organizationId
+          });
           
-        if (!existingProfile) {
-          console.log('User profile not found, creating manually...');
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: authData.user.id,
-              email: formData.email,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              phone: formData.phone,
-              job_title: formData.jobTitle,
-              organization_id: organizationId
-            });
-            
-          if (profileError) {
-            console.error('Error creating user profile:', profileError);
-          } else {
-            console.log('User profile created manually');
-          }
+        if (profileError) {
+          console.error('Error creating user profile:', profileError);
+          toast.error('Error creating user profile, but account was created');
+        } else {
+          console.log('User profile created successfully');
         }
 
-        // Attempt to add user role if not already added by trigger
+        // Add default user role
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({
             user_id: authData.user.id,
             role_id: 1 // Assuming 1 is the 'user' role ID
-          })
-          .select();
+          });
           
-        if (roleError && !roleError.message.includes('duplicate')) {
+        if (roleError && !roleError.message?.includes('duplicate')) {
           console.error('Error creating user role:', roleError);
+        } else {
+          console.log('User role created successfully');
         }
       } catch (err) {
-        console.error('Error in fallback profile creation:', err);
+        console.error('Error in profile/role creation:', err);
       }
 
       // Sign out the user after successful registration
       await supabase.auth.signOut();
       
-      toast.success('Registration successful! Please check your email for verification and then log in.');
+      toast.success('Registration successful! Please log in to continue.');
       
       // Redirect to login page with success message
       navigate('/login?registered=true');

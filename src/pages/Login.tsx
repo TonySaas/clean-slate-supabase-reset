@@ -46,10 +46,9 @@ export default function Login() {
     }
   };
 
-  const handleRegister = async (organizationId: string) => {
+  const handleRegister = (organizationId: string) => {
     setIsRegisterDialogOpen(false);
-    // Redirect to a new registration page with the selected organization
-    window.location.href = `/register?organization=${organizationId}`;
+    navigate(`/register?organization=${organizationId}`);
   };
 
   return (
@@ -57,7 +56,7 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
         <div>
           <h2 className="text-center text-3xl font-extrabold text-gray-900">
-            Organisations Please Sign in to your account
+            Sign in to your account
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

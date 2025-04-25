@@ -122,6 +122,9 @@ export const useAuth = () => {
               // Navigate to dashboard with organization ID
               console.log(`Redirecting to dashboard/${profileData.organization_id}`);
               navigate(`/dashboard/${profileData.organization_id}`);
+            } else {
+              console.error('User profile has no organization_id:', profileData);
+              toast.error('Your account is not associated with an organization');
             }
           } catch (error) {
             console.error('Error fetching user profile:', error);
