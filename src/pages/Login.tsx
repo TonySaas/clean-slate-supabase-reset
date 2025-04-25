@@ -65,7 +65,13 @@ export default function Login() {
   
   const handleRegisterClick = async () => {
     console.log('Register button clicked, checking organizations...');
-    await checkOrganizationsExist();
+    try {
+      await checkOrganizationsExist();
+      console.log('Organizations check completed, dialog should open:', isRegisterDialogOpen);
+    } catch (error) {
+      console.error('Error checking organizations:', error);
+      toast.error('Failed to check organizations');
+    }
   };
 
   // If user is already authenticated and has an organization, redirect to dashboard

@@ -20,6 +20,7 @@ export const useAuthActions = () => {
       }
       
       console.log('Login successful for user:', data?.user?.email);
+      console.log('Login response data:', data);
       toast.success('Login successful');
       
       // The onAuthStateChange event will handle the redirect

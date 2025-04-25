@@ -35,6 +35,8 @@ export const useOrganizations = () => {
           return [];
         }
         
+        console.log('Raw organizations data:', orgsData);
+        
         if (orgsData.length === 0) {
           console.log('No organizations found in the database (empty array)');
           return [];
@@ -49,14 +51,17 @@ export const useOrganizations = () => {
           offersCount: 0,
         }));
 
-        console.log('Successfully fetched organizations:', organizations);
+        console.log('Successfully transformed organizations:', organizations);
         return organizations;
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error in useOrganizations:", error);
+        toast.error("Failed to fetch organizations", {
+          description: error.message || "Please try again later"
+        });
         throw error;
       }
     },
-    retry: 1,
+    retry: 2,
     staleTime: 5000, // Consider data fresh for 5 seconds
     refetchOnWindowFocus: false,
   });
