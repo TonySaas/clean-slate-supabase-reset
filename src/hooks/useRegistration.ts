@@ -32,6 +32,11 @@ export const useRegistration = (organizationId: string | null) => {
         lastName: formData.lastName
       });
 
+      if (!organizationId) {
+        throw new Error('Organization ID is required for registration');
+      }
+
+      // Step 1: Create the Auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -67,8 +72,10 @@ export const useRegistration = (organizationId: string | null) => {
         email: authData.user.email
       });
       
+      // Wait a small delay to ensure the auth process completes
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Step 2: Check if profile already exists
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('user_profiles')
         .select('id')
@@ -79,6 +86,7 @@ export const useRegistration = (organizationId: string | null) => {
         console.error('Error checking for profile:', profileCheckError);
       }
       
+      // Step 3: Manually create profile if it doesn't exist
       if (!existingProfile) {
         console.log('No profile found, creating one manually');
         
@@ -96,6 +104,9 @@ export const useRegistration = (organizationId: string | null) => {
           
         if (profileError) {
           console.error('Failed to create user profile:', profileError);
+          setErrorDetails(`Profile creation failed: ${profileError.message}`);
+          setIsSubmitting(false);
+          return;
         } else {
           console.log('User profile created successfully');
         }
@@ -103,6 +114,7 @@ export const useRegistration = (organizationId: string | null) => {
         console.log('User profile already exists, skipping creation');
       }
       
+      // Step 4: Assign default role to the user
       try {
         const { data: roleData } = await supabase
           .from('roles')
@@ -128,6 +140,7 @@ export const useRegistration = (organizationId: string | null) => {
         console.error('Error finding or assigning role:', roleErr);
       }
       
+      // Step 5: Auto sign in the user
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
