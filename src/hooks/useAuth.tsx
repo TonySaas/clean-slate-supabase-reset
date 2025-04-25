@@ -26,130 +26,173 @@ export const useAuth = () => {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
+  // Function to ensure user profile exists
+  const ensureUserProfile = async (userId: string, userEmail: string | undefined, metadata: any) => {
+    console.log('Ensuring user profile exists for:', userId);
+    
+    try {
+      // Check if profile exists
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error checking profile:', profileError);
+        throw profileError;
+      }
+      
+      // If profile exists, return it
+      if (existingProfile) {
+        console.log('Found existing profile:', existingProfile);
+        return existingProfile;
+      }
+      
+      // Profile doesn't exist, create it
+      console.log('Profile not found, creating from metadata:', metadata);
+      
+      // Get the first organization if no organization_id is specified
+      let orgId = metadata?.organization_id;
+      if (!orgId) {
+        const { data: firstOrg } = await supabase
+          .from('organizations')
+          .select('id')
+          .limit(1)
+          .single();
+          
+        orgId = firstOrg?.id;
+        console.log('No organization ID found, using first organization:', orgId);
+        
+        if (!orgId) {
+          throw new Error('No organization found and none specified in metadata');
+        }
+      }
+      
+      // Create profile
+      const { data: newProfile, error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email: userEmail,
+          organization_id: orgId,
+          first_name: metadata?.first_name || null,
+          last_name: metadata?.last_name || null,
+          phone: metadata?.phone || null,
+          job_title: metadata?.job_title || null
+        })
+        .select();
+      
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+        throw insertError;
+      }
+      
+      console.log('Created new profile:', newProfile);
+      
+      // Add default user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role_id: 1 // Assuming 1 is the default 'user' role
+        });
+        
+      if (roleError && !roleError.message?.includes('duplicate')) {
+        console.error('Error adding role:', roleError);
+        // Don't throw here, just log the error
+      } else {
+        console.log('Added default user role');
+      }
+      
+      return newProfile?.[0] || null;
+    } catch (error) {
+      console.error('Error ensuring user profile:', error);
+      throw error;
+    }
+  };
+  
+  // Function to fetch user roles
+  const fetchUserRoles = async (userId: string) => {
+    try {
+      const { data: userRolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select(`
+          role_id,
+          roles (id, name)
+        `)
+        .eq('user_id', userId);
+      
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        return [];
+      }
+      
+      // Transform roles data
+      const roles = userRolesData ? userRolesData.map(ur => ({
+        id: ur.role_id,
+        name: ur.roles?.name || ''
+      })) : [];
+      
+      console.log('Fetched roles:', roles);
+      return roles;
+    } catch (error) {
+      console.error('Error in fetchUserRoles:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
+    console.log('Setting up auth state change listener');
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
         if (session?.user) {
           try {
-            // Fetch user profile
-            let profileData = null;
-            let profileError = null;
+            // Get user metadata
+            const metadata = session.user.user_metadata || {};
+            console.log('User metadata:', metadata);
             
-            console.log('Fetching user profile for user ID:', session.user.id);
+            // Ensure user profile exists
+            const userProfile = await ensureUserProfile(
+              session.user.id, 
+              session.user.email,
+              metadata
+            );
             
-            // First attempt to get the profile
-            const profileResult = await supabase
-              .from('user_profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            
-            profileData = profileResult.data;
-            profileError = profileResult.error;
-            
-            console.log('Profile fetch result:', { profileData, profileError });
-
-            // If profile doesn't exist but user is authenticated, create it from metadata
-            if (profileError && profileError.code === 'PGRST116') {
-              console.log('Profile not found, trying to create from metadata');
-              
-              // Get user metadata
-              const { data: { user } } = await supabase.auth.getUser();
-              
-              if (user?.user_metadata) {
-                const metadata = user.user_metadata;
-                console.log('User metadata available:', metadata);
-                
-                // Create user profile with metadata
-                const { data: insertedProfile, error: insertError } = await supabase
-                  .from('user_profiles')
-                  .insert({
-                    id: user.id,
-                    email: user.email,
-                    first_name: metadata.first_name,
-                    last_name: metadata.last_name,
-                    phone: metadata.phone,
-                    job_title: metadata.job_title,
-                    organization_id: metadata.organization_id
-                  })
-                  .select()
-                  .single();
-                  
-                if (insertError) {
-                  console.error('Error creating profile from metadata:', insertError);
-                  toast.error('Failed to create user profile');
-                } else {
-                  console.log('Successfully created user profile:', insertedProfile);
-                  profileData = insertedProfile;
-                  profileError = null;
-                  
-                  // Add default user role
-                  const { error: roleError } = await supabase
-                    .from('user_roles')
-                    .insert({
-                      user_id: user.id,
-                      role_id: 1 // Assuming 1 is the default 'user' role
-                    });
-                    
-                  if (roleError) {
-                    console.error('Error adding default user role:', roleError);
-                  } else {
-                    console.log('Added default user role');
-                  }
-                }
-              } else {
-                console.error('No user metadata available');
-                toast.error('User profile data is incomplete');
-              }
-            } else if (profileError) {
-              console.error('Error fetching profile:', profileError);
+            if (!userProfile) {
+              console.error('Failed to get or create user profile');
               toast.error('Error loading user profile');
-              throw profileError;
+              setIsLoading(false);
+              return;
             }
             
-            // Now check if we have a profile with an organization ID
-            if (profileData?.organization_id) {
-              console.log('Profile found with organization:', profileData.organization_id);
-              
-              // Fetch user roles in a separate query
-              const { data: userRolesData, error: rolesError } = await supabase
-                .from('user_roles')
-                .select(`
-                  role_id,
-                  roles (id, name)
-                `)
-                .eq('user_id', session.user.id);
-              
-              if (rolesError) {
-                console.error('Error fetching user roles:', rolesError);
-              }
-              
-              // Transform roles data (if roles were fetched successfully)
-              const roles = userRolesData ? userRolesData.map(ur => ({
-                id: ur.role_id,
-                name: ur.roles?.name || ''
-              })) : [];
-              
-              // Create the user profile with roles
-              const userProfile: UserProfile = {
-                ...profileData,
-                roles
-              };
-
-              setOrganizationId(profileData.organization_id);
-              setProfile(userProfile);
-              
-              // Navigate to dashboard with organization ID
-              console.log(`Redirecting to dashboard/${profileData.organization_id}`);
-              navigate(`/dashboard/${profileData.organization_id}`);
-            } else {
-              console.error('User profile has no organization_id:', profileData);
+            if (!userProfile.organization_id) {
+              console.error('User profile has no organization_id:', userProfile);
               toast.error('Your account is not associated with an organization');
+              setIsLoading(false);
+              return;
             }
+            
+            // Fetch user roles
+            const roles = await fetchUserRoles(session.user.id);
+            
+            // Set user state
+            const completeProfile: UserProfile = {
+              ...userProfile,
+              roles
+            };
+            
+            setOrganizationId(userProfile.organization_id);
+            setProfile(completeProfile);
+            
+            // Navigate to dashboard
+            console.log(`Redirecting to dashboard/${userProfile.organization_id}`);
+            navigate(`/dashboard/${userProfile.organization_id}`);
           } catch (error) {
-            console.error('Error in auth state change handler:', error);
+            console.error('Error processing authenticated user:', error);
             toast.error('Error loading user profile');
           }
         } else {
@@ -157,19 +200,28 @@ export const useAuth = () => {
           setOrganizationId(null);
           setProfile(null);
         }
+        
         setIsLoading(false);
       }
     );
 
     // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log('Found existing session for user:', session.user.id);
+        // The onAuthStateChange handler will process this session
+      } else {
         console.log('No existing session found');
         setIsLoading(false);
       }
-    });
+    };
+    
+    checkSession();
 
     return () => {
+      console.log('Cleaning up auth subscription');
       subscription.unsubscribe();
     };
   }, [navigate]);
@@ -182,12 +234,15 @@ export const useAuth = () => {
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
       
-      // The onAuthStateChange event will handle the redirect to dashboard
       console.log('Login successful for user:', data?.user?.email);
       toast.success('Login successful');
       
+      // The onAuthStateChange event will handle the redirect
     } catch (error: any) {
       console.error('Error logging in:', error);
       toast.error(error.message || 'Login failed');

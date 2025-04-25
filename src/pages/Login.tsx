@@ -29,10 +29,12 @@ export default function Login() {
   }, [searchParams]);
 
   // Redirect if already logged in
-  if (organizationId && !isLoading) {
-    console.log('User already logged in, redirecting to dashboard');
-    return <Navigate to={`/dashboard/${organizationId}`} replace />;
-  }
+  useEffect(() => {
+    if (organizationId && !isLoading) {
+      console.log('User already logged in, redirecting to dashboard with org ID:', organizationId);
+      navigate(`/dashboard/${organizationId}`, { replace: true });
+    }
+  }, [organizationId, isLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +42,12 @@ export default function Login() {
     setIsSubmitting(true);
     
     try {
+      console.log('Attempting login for:', email);
       await login(email, password);
-      // The redirect will happen automatically in the useAuth hook
+      console.log('Login function completed');
+      // The redirect will happen automatically in the useAuth hook via useEffect above
     } catch (error: any) {
+      console.error('Login error:', error);
       setLoginError(error.message || 'Invalid email or password');
       toast.error('Login failed', {
         description: error.message || 'Please check your credentials and try again'
@@ -56,6 +61,11 @@ export default function Login() {
     setIsRegisterDialogOpen(false);
     navigate(`/register?organization=${organizationId}`);
   };
+
+  if (organizationId && !isLoading) {
+    console.log('Redirecting to dashboard in render with org ID:', organizationId);
+    return <Navigate to={`/dashboard/${organizationId}`} replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

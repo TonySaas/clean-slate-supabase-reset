@@ -30,23 +30,81 @@ export default function Register() {
     }
   }, [organizationId, navigate]);
 
+  const createUserProfile = async (userId: string, userData: RegistrationData) => {
+    console.log('Creating user profile for:', userId, userData);
+    
+    try {
+      // First check if profile already exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+        
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking profile:', checkError);
+        throw checkError;
+      }
+      
+      if (existingProfile) {
+        console.log('Profile already exists:', existingProfile);
+        return existingProfile;
+      }
+
+      // Create user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email: userData.email,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          phone: userData.phone,
+          job_title: userData.jobTitle,
+          organization_id: organizationId
+        })
+        .select();
+        
+      if (profileError) {
+        console.error('Error creating user profile:', profileError);
+        throw profileError;
+      }
+
+      console.log('Profile created successfully:', profileData);
+      
+      // Add default user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role_id: 1 // Assuming 1 is the default 'user' role
+        });
+        
+      if (roleError) {
+        console.error('Error creating user role:', roleError);
+        throw roleError;
+      }
+      
+      console.log('User role added successfully');
+      
+      return profileData;
+    } catch (error) {
+      console.error('Error in profile creation:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (formData: RegistrationData) => {
     setErrorDetails(null);
     setEmailError(null);
     setIsSubmitting(true);
     
     try {
-      // Log the registration attempt with organization ID
       console.log('Starting registration process:', {
         email: formData.email,
         organizationId,
-        metadata: {
-          organization_id: organizationId,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          job_title: formData.jobTitle
-        }
+        firstName: formData.firstName,
+        lastName: formData.lastName
       });
 
       // Create the user with auth API
@@ -85,56 +143,8 @@ export default function Register() {
         email: authData.user.email
       });
       
-      // IMPORTANT: Always manually create user profile to ensure it exists
-      try {
-        // Check if the profile already exists
-        const { data: existingProfile } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('id', authData.user.id)
-          .single();
-          
-        if (!existingProfile) {
-          console.log('Creating user profile manually...');
-          const { data: profileData, error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: authData.user.id,
-              email: formData.email,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              phone: formData.phone,
-              job_title: formData.jobTitle,
-              organization_id: organizationId
-            })
-            .select();
-            
-          if (profileError) {
-            console.error('Error creating user profile:', profileError);
-            toast.error('Error creating user profile, but account was created');
-          } else {
-            console.log('User profile created successfully:', profileData);
-          }
-
-          // Add default user role
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: authData.user.id,
-              role_id: 1 // Assuming 1 is the 'user' role ID
-            });
-            
-          if (roleError && !roleError.message?.includes('duplicate')) {
-            console.error('Error creating user role:', roleError);
-          } else {
-            console.log('User role created successfully');
-          }
-        } else {
-          console.log('User profile already exists');
-        }
-      } catch (err) {
-        console.error('Error in profile/role creation:', err);
-      }
+      // CRITICAL: Always manually create user profile
+      await createUserProfile(authData.user.id, formData);
 
       // Sign out the user after successful registration
       await supabase.auth.signOut();
