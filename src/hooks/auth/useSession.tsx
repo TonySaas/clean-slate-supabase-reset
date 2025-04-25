@@ -12,6 +12,7 @@ export const useSession = () => {
   useEffect(() => {
     console.log('Setting up auth state change listener');
     
+    // First set up the auth state change listener to capture any auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
@@ -33,6 +34,20 @@ export const useSession = () => {
                 console.log('User profile not found, creating new profile');
                 const metadata = session.user.user_metadata || {};
                 
+                // Get any organization - we need an organization ID
+                const { data: orgData, error: orgError } = await supabase
+                  .from('organizations')
+                  .select('id')
+                  .limit(1)
+                  .single();
+                
+                if (orgError) {
+                  console.error('Error fetching default organization:', orgError);
+                  toast.error('Error loading organization data');
+                  setIsLoading(false);
+                  return;
+                }
+
                 const { data: newProfile, error: createError } = await supabase
                   .from('user_profiles')
                   .insert({
@@ -42,10 +57,7 @@ export const useSession = () => {
                     last_name: metadata.last_name,
                     phone: metadata.phone,
                     job_title: metadata.job_title,
-                    organization_id: metadata.organization_id || (
-                      // Fallback to get any organization if none specified
-                      await supabase.from('organizations').select('id').limit(1).single()
-                    ).data?.id
+                    organization_id: metadata.organization_id || orgData?.id
                   })
                   .select()
                   .single();
@@ -138,9 +150,22 @@ export const useSession = () => {
 
     // Check current session
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        console.log('No existing session found');
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!session) {
+          console.log('No existing session found');
+          setIsLoading(false);
+        }
+        // The onAuthStateChange listener will handle session data if it exists
+      } catch (err) {
+        console.error('Unexpected error checking session:', err);
         setIsLoading(false);
       }
     };

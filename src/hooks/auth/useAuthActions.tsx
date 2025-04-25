@@ -23,6 +23,7 @@ export const useAuthActions = () => {
       toast.success('Login successful');
       
       // The onAuthStateChange event will handle the redirect
+      return data;
     } catch (error: any) {
       console.error('Error logging in:', error);
       toast.error(error.message || 'Login failed');
@@ -34,13 +35,17 @@ export const useAuthActions = () => {
     try {
       console.log('Logging out...');
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error('Logout error:', error);
+        throw error;
+      }
       
       console.log('Logout successful, redirecting to login page');
+      toast.success('Logged out successfully');
       navigate('/login');
     } catch (error: any) {
       console.error('Error logging out:', error);
-      toast.error('Error logging out');
+      toast.error('Error logging out: ' + (error.message || 'Unknown error'));
     }
   };
 

@@ -56,7 +56,8 @@ export const useOrganizations = () => {
         throw error;
       }
     },
-    retry: 2,
-    staleTime: 10000, // Consider data fresh for 10 seconds
+    retry: 1,
+    staleTime: 5000, // Consider data fresh for 5 seconds
+    refetchOnWindowFocus: false,
   });
 };

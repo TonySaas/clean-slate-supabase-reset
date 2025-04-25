@@ -33,7 +33,9 @@ export default function Login() {
   }, [searchParams]);
 
   useEffect(() => {
+    // If user is authenticated and has an organization, redirect to dashboard
     if (organizationId && !authLoading) {
+      console.log('User authenticated with organization, redirecting to dashboard:', organizationId);
       navigate(`/dashboard/${organizationId}`, { replace: true });
     }
   }, [organizationId, authLoading, navigate]);
@@ -41,7 +43,9 @@ export default function Login() {
   const handleLogin = async (email: string, password: string) => {
     try {
       setIsSubmitting(true);
+      console.log('Login attempt for:', email);
       await login(email, password);
+      // The redirect will happen via the useEffect above once organizationId is set
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error('Login failed', {
@@ -54,14 +58,17 @@ export default function Login() {
   };
 
   const handleRegister = (organizationId: string) => {
+    console.log('Selected organization for registration:', organizationId);
     setIsRegisterDialogOpen(false);
     navigate(`/register?organization=${organizationId}`);
   };
   
   const handleRegisterClick = async () => {
+    console.log('Register button clicked, checking organizations...');
     await checkOrganizationsExist();
   };
 
+  // If user is already authenticated and has an organization, redirect to dashboard
   if (organizationId && !authLoading) {
     return <Navigate to={`/dashboard/${organizationId}`} replace />;
   }
@@ -83,7 +90,7 @@ export default function Login() {
             variant="outline" 
             className="w-full"
             onClick={handleRegisterClick}
-            disabled={isCheckingOrgs}
+            disabled={isCheckingOrgs || isLoadingOrgs}
           >
             {isCheckingOrgs ? (
               <>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { useOrganizations } from './useOrganizations';
 
@@ -8,47 +8,39 @@ export const useRegisterDialog = () => {
   const [isCheckingOrgs, setIsCheckingOrgs] = useState(false);
   const { data: organizations, isLoading, error, refetch } = useOrganizations();
 
-  useEffect(() => {
-    if (isRegisterDialogOpen) {
-      refetch();
-    }
-  }, [isRegisterDialogOpen, refetch]);
-
   const checkOrganizationsExist = async () => {
-    if (isCheckingOrgs) {
-      toast.info("Please wait...");
+    if (isCheckingOrgs || isLoading) {
+      toast.info("Please wait, checking organizations...");
       return false;
     }
     
     setIsCheckingOrgs(true);
     
     try {
-      // First try to use cached data
-      if (organizations && organizations.length > 0) {
-        setIsRegisterDialogOpen(true);
-        return true;
-      }
-      
-      // If no cached data, fetch fresh data
+      // Fetch organizations with cache clearing to ensure fresh data
       const { data } = await refetch();
+      
+      console.log('Organizations data:', data);
       
       if (!data || data.length === 0) {
         toast.error("No organizations available", {
-          description: "Please contact an administrator"
+          description: "Please contact an administrator to set up organizations"
         });
+        setIsCheckingOrgs(false);
         return false;
       }
       
+      // Organizations exist, open the dialog
       setIsRegisterDialogOpen(true);
+      setIsCheckingOrgs(false);
       return true;
     } catch (error: any) {
       console.error("Organization check error:", error);
       toast.error("Unable to check organizations", {
-        description: "Please try again"
+        description: error.message || "Please try again"
       });
-      return false;
-    } finally {
       setIsCheckingOrgs(false);
+      return false;
     }
   };
 
