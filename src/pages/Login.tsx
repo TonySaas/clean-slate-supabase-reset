@@ -5,14 +5,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useOrganizations } from '@/hooks/useOrganizations';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Login() {
   const { login, isLoading, organizationId } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
   const { data: organizations, isLoading: isLoadingOrgs } = useOrganizations();
   const navigate = useNavigate();
@@ -28,16 +30,20 @@ export default function Login() {
 
   // Redirect if already logged in
   if (organizationId && !isLoading) {
+    console.log('User already logged in, redirecting to dashboard');
     return <Navigate to={`/dashboard/${organizationId}`} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError(null);
     setIsSubmitting(true);
+    
     try {
       await login(email, password);
       // The redirect will happen automatically in the useAuth hook
     } catch (error: any) {
+      setLoginError(error.message || 'Invalid email or password');
       toast.error('Login failed', {
         description: error.message || 'Please check your credentials and try again'
       });
@@ -87,6 +93,13 @@ export default function Login() {
                 placeholder="Enter your password" 
               />
             </div>
+            
+            {loginError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2 text-sm text-red-700">
+                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -108,6 +121,9 @@ export default function Login() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Select Your Organization</DialogTitle>
+            <DialogDescription>
+              Choose an organization to register with
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {isLoadingOrgs ? (

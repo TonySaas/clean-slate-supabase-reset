@@ -87,37 +87,50 @@ export default function Register() {
       
       // IMPORTANT: Always manually create user profile to ensure it exists
       try {
-        const { error: profileError } = await supabase
+        // Check if the profile already exists
+        const { data: existingProfile } = await supabase
           .from('user_profiles')
-          .insert({
-            id: authData.user.id,
-            email: formData.email,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            job_title: formData.jobTitle,
-            organization_id: organizationId
-          });
+          .select('id')
+          .eq('id', authData.user.id)
+          .single();
           
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          toast.error('Error creating user profile, but account was created');
-        } else {
-          console.log('User profile created successfully');
-        }
+        if (!existingProfile) {
+          console.log('Creating user profile manually...');
+          const { data: profileData, error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: authData.user.id,
+              email: formData.email,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              job_title: formData.jobTitle,
+              organization_id: organizationId
+            })
+            .select();
+            
+          if (profileError) {
+            console.error('Error creating user profile:', profileError);
+            toast.error('Error creating user profile, but account was created');
+          } else {
+            console.log('User profile created successfully:', profileData);
+          }
 
-        // Add default user role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role_id: 1 // Assuming 1 is the 'user' role ID
-          });
-          
-        if (roleError && !roleError.message?.includes('duplicate')) {
-          console.error('Error creating user role:', roleError);
+          // Add default user role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user.id,
+              role_id: 1 // Assuming 1 is the 'user' role ID
+            });
+            
+          if (roleError && !roleError.message?.includes('duplicate')) {
+            console.error('Error creating user role:', roleError);
+          } else {
+            console.log('User role created successfully');
+          }
         } else {
-          console.log('User role created successfully');
+          console.log('User profile already exists');
         }
       } catch (err) {
         console.error('Error in profile/role creation:', err);
