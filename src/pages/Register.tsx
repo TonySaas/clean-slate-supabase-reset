@@ -79,38 +79,50 @@ export default function Register() {
         email: authData.user.email
       });
       
-      // Ensure user profile exists
-      try {
-        const { data: existingProfile, error: profileFetchError } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('id', authData.user.id)
-          .single();
+      // Create user profile manually to ensure it exists
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: authData.user.id,
+          organization_id: organizationId,
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          job_title: formData.jobTitle
+        });
         
-        if (profileFetchError && profileFetchError.code === 'PGRST116') {
-          console.log('User profile not found, creating manually');
+      if (profileError) {
+        console.error('Error creating user profile manually:', profileError);
+        toast.error('Error creating user profile');
+      } else {
+        console.log('User profile created manually successfully');
+      }
+      
+      // Create a basic user role
+      try {
+        const { data: roleData } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('name', 'user')
+          .single();
           
-          // Create profile manually if it wasn't created by the trigger
-          const { error: profileInsertError } = await supabase
-            .from('user_profiles')
+        if (roleData) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
             .insert({
-              id: authData.user.id,
-              organization_id: organizationId,
-              email: formData.email,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              phone: formData.phone,
-              job_title: formData.jobTitle
+              user_id: authData.user.id,
+              role_id: roleData.id
             });
             
-          if (profileInsertError) {
-            console.error('Error creating user profile manually:', profileInsertError);
+          if (roleError) {
+            console.error('Error assigning user role:', roleError);
           } else {
-            console.log('User profile created manually');
+            console.log('User role assigned successfully');
           }
         }
-      } catch (profileError) {
-        console.error('Error checking/creating profile:', profileError);
+      } catch (roleErr) {
+        console.error('Error finding or assigning role:', roleErr);
       }
       
       // Sign in the user immediately after successful registration

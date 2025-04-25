@@ -63,7 +63,6 @@ export default function Login() {
   
   const handleRegisterClick = () => {
     console.log('Register button clicked, checking organizations...');
-    // Direct function call, no async/await
     checkOrganizationsExist();
   };
 
