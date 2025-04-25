@@ -32,9 +32,9 @@ export const useAuth = () => {
         if (session?.user) {
           try {
             // Fetch user profile
-            let profileData;
-            let profileError;
-
+            let profileData = null;
+            let profileError = null;
+            
             // First attempt to get the profile
             const profileResult = await supabase
               .from('user_profiles')
