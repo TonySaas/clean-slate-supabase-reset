@@ -91,89 +91,44 @@ export const useRegistration = (organizationId: string | null) => {
       if (!existingProfile) {
         console.log('No profile found, creating one manually');
         
-        // First try using the RPC endpoint if available
-        try {
-          const { error: rpcError } = await supabase.rpc('create_user_profile', {
-            user_id: authData.user.id,
-            org_id: organizationId,
-            user_email: formData.email,
-            first: formData.firstName,
-            last: formData.lastName,
-            user_phone: formData.phone,
-            job: formData.jobTitle
+        // Direct insert instead of RPC
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            organization_id: organizationId,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            job_title: formData.jobTitle
           });
           
-          if (rpcError) {
-            console.log('RPC method not available, falling back to direct insert:', rpcError);
-            // Fall back to direct insert
-            const { error: profileError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: authData.user.id,
-                organization_id: organizationId,
-                email: formData.email,
-                first_name: formData.firstName,
-                last_name: formData.lastName,
-                phone: formData.phone,
-                job_title: formData.jobTitle
-              });
-              
-            if (profileError) {
-              console.error('Failed to create user profile:', profileError);
-              // Try upsert as a last resort
-              const { error: upsertError } = await supabase
-                .from('user_profiles')
-                .upsert({
-                  id: authData.user.id,
-                  organization_id: organizationId,
-                  email: formData.email,
-                  first_name: formData.firstName,
-                  last_name: formData.lastName,
-                  phone: formData.phone,
-                  job_title: formData.jobTitle
-                }, { onConflict: 'id' });
-                
-              if (upsertError) {
-                console.error('Failed to upsert user profile:', upsertError);
-                setErrorDetails(`Profile creation failed: ${upsertError.message}`);
-                setIsSubmitting(false);
-                return;
-              } else {
-                console.log('User profile upserted successfully');
-              }
-            } else {
-              console.log('User profile created successfully via direct insert');
-            }
-          } else {
-            console.log('User profile created successfully via RPC');
-          }
-        } catch (createError: any) {
-          console.error('Exception during profile creation:', createError);
-          
-          // Final fallback - direct insert with minimal data
-          try {
-            const { error: lastResortError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: authData.user.id,
-                organization_id: organizationId,
-                email: formData.email
-              });
-              
-            if (lastResortError) {
-              console.error('Final attempt to create profile failed:', lastResortError);
-              setErrorDetails(`Profile creation failed: ${lastResortError.message}`);
-              setIsSubmitting(false);
-              return;
-            } else {
-              console.log('Basic user profile created successfully as last resort');
-            }
-          } catch (finalError) {
-            console.error('All profile creation attempts failed:', finalError);
-            setErrorDetails('Could not create user profile after multiple attempts');
+        if (profileError) {
+          console.error('Failed to create user profile:', profileError);
+          // Try upsert as a fallback
+          const { error: upsertError } = await supabase
+            .from('user_profiles')
+            .upsert({
+              id: authData.user.id,
+              organization_id: organizationId,
+              email: formData.email,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              job_title: formData.jobTitle
+            }, { onConflict: 'id' });
+            
+          if (upsertError) {
+            console.error('Failed to upsert user profile:', upsertError);
+            setErrorDetails(`Profile creation failed: ${upsertError.message}`);
             setIsSubmitting(false);
             return;
+          } else {
+            console.log('User profile upserted successfully');
           }
+        } else {
+          console.log('User profile created successfully via direct insert');
         }
       } else {
         console.log('User profile already exists, skipping creation');
@@ -235,3 +190,4 @@ export const useRegistration = (organizationId: string | null) => {
     emailError
   };
 };
+
