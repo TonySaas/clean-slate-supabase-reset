@@ -20,7 +20,7 @@ export const useOrganizations = () => {
         console.log('Fetching organizations data');
         const { data: orgsData, error: orgsError } = await supabase
           .from('organizations')
-          .select('id, name, logo_url, primary_color, created_at, updated_at');
+          .select('id, name, logo_url, primary_color');
         
         if (orgsError) {
           console.error('Error fetching organizations:', orgsError);

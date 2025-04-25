@@ -45,6 +45,24 @@ export default function Login() {
     }
   }, [isRegisterDialogOpen, refetchOrgs]);
 
+  // Add a timeout for the "checking organizations" state
+  useEffect(() => {
+    let timeoutId: number | undefined;
+    
+    if (isCheckingOrgs) {
+      timeoutId = window.setTimeout(() => {
+        setIsCheckingOrgs(false);
+        toast.error("Operation timed out", {
+          description: "Failed to check organizations. Please try again."
+        });
+      }, 8000); // 8 second timeout
+    }
+    
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [isCheckingOrgs]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -75,41 +93,44 @@ export default function Login() {
   const checkOrganizationsExist = async () => {
     setIsCheckingOrgs(true);
     try {
-      // If we don't have organizations data yet, fetch directly
-      if (!organizations || organizations.length === 0) {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .limit(5);
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          toast.error("No organizations found", {
-            description: "Please contact an administrator to set up organizations"
-          });
-          setIsCheckingOrgs(false);
-          return false;
-        }
-        
-        // If there are organizations, populate them and open the dialog
-        refetchOrgs();
+      // First check if we already have organizations data loaded
+      if (organizations && organizations.length > 0) {
         setIsRegisterDialogOpen(true);
         setIsCheckingOrgs(false);
         return true;
       }
       
-      if (organizations.length > 0) {
-        setIsRegisterDialogOpen(true);
+      // If no data yet or empty array, fetch directly from Supabase
+      console.log('Fetching organizations directly from Supabase');
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .limit(10);
+      
+      if (error) {
+        console.error('Error fetching organizations:', error);
+        toast.error("Failed to fetch organizations", {
+          description: error.message
+        });
         setIsCheckingOrgs(false);
-        return true;
-      } else {
+        return false;
+      }
+      
+      if (!data || data.length === 0) {
+        console.log('No organizations found');
         toast.error("No organizations found", {
           description: "Please contact an administrator to set up organizations"
         });
         setIsCheckingOrgs(false);
         return false;
       }
+      
+      // If organizations exist, trigger a refetch and open dialog
+      console.log('Organizations found:', data.length);
+      await refetchOrgs();
+      setIsRegisterDialogOpen(true);
+      setIsCheckingOrgs(false);
+      return true;
     } catch (error) {
       console.error("Error checking organizations:", error);
       toast.error("Failed to check organizations");
@@ -118,8 +139,8 @@ export default function Login() {
     }
   };
 
-  const handleOpenRegisterDialog = async () => {
-    await checkOrganizationsExist();
+  const handleOpenRegisterDialog = () => {
+    checkOrganizationsExist();
   };
 
   if (organizationId && !isLoading) {
