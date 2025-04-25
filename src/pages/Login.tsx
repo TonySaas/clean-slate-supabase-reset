@@ -51,8 +51,6 @@ export default function Login() {
       toast.error('Login failed', {
         description: error.message || 'Please check your credentials'
       });
-      throw error;
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -65,13 +63,7 @@ export default function Login() {
   
   const handleRegisterClick = async () => {
     console.log('Register button clicked, checking organizations...');
-    try {
-      await checkOrganizationsExist();
-      console.log('Organizations check completed, dialog should open:', isRegisterDialogOpen);
-    } catch (error) {
-      console.error('Error checking organizations:', error);
-      toast.error('Failed to check organizations');
-    }
+    await checkOrganizationsExist();
   };
 
   // If user is already authenticated and has an organization, redirect to dashboard

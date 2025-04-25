@@ -47,9 +47,6 @@ export const useRegisterDialog = () => {
       });
       setIsCheckingOrgs(false);
       return false;
-    } finally {
-      console.log('Setting isCheckingOrgs to false');
-      setIsCheckingOrgs(false);
     }
   };
 
