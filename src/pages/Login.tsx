@@ -1,28 +1,29 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useOrganizations } from '@/hooks/useOrganizations';
-import { AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
+import { LoginForm } from '@/components/auth/LoginForm';
+import { RegisterDialog } from '@/components/auth/RegisterDialog';
+import { useRegisterDialog } from '@/hooks/useRegisterDialog';
 
 export default function Login() {
   const { login, isLoading, organizationId } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
-  const [isCheckingOrgs, setIsCheckingOrgs] = useState(false);
-  const { data: organizations, isLoading: isLoadingOrgs, error: orgsError, refetch: refetchOrgs } = useOrganizations();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  // Show success message if user just registered
+  const navigate = useNavigate();
+  const {
+    isRegisterDialogOpen,
+    setIsRegisterDialogOpen,
+    isCheckingOrgs,
+    checkOrganizationsExist,
+    organizations,
+    isLoading: isLoadingOrgs,
+    error: orgsError,
+    refetch: refetchOrgs
+  } = useRegisterDialog();
+
   useEffect(() => {
     const justRegistered = searchParams.get('registered');
     if (justRegistered === 'true') {
@@ -30,7 +31,6 @@ export default function Login() {
     }
   }, [searchParams]);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (organizationId && !isLoading) {
       console.log('User already logged in, redirecting to dashboard with org ID:', organizationId);
@@ -38,109 +38,23 @@ export default function Login() {
     }
   }, [organizationId, isLoading, navigate]);
 
-  // Fetch organizations when dialog opens
-  useEffect(() => {
-    if (isRegisterDialogOpen) {
-      refetchOrgs();
-    }
-  }, [isRegisterDialogOpen, refetchOrgs]);
-
-  // Add a timeout for the "checking organizations" state
-  useEffect(() => {
-    let timeoutId: number | undefined;
-    
-    if (isCheckingOrgs) {
-      timeoutId = window.setTimeout(() => {
-        setIsCheckingOrgs(false);
-        toast.error("Operation timed out", {
-          description: "Failed to check organizations. Please try again."
-        });
-      }, 8000); // 8 second timeout
-    }
-    
-    return () => {
-      if (timeoutId) window.clearTimeout(timeoutId);
-    };
-  }, [isCheckingOrgs]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    setIsSubmitting(true);
-    
+  const handleLogin = async (email: string, password: string) => {
     try {
       console.log('Attempting login for:', email);
       await login(email, password);
       console.log('Login function completed');
-      // The redirect will happen automatically in the useAuth hook via useEffect above
     } catch (error: any) {
       console.error('Login error:', error);
-      setLoginError(error.message || 'Invalid email or password');
       toast.error('Login failed', {
         description: error.message || 'Please check your credentials and try again'
       });
-    } finally {
-      setIsSubmitting(false);
+      throw error;
     }
   };
 
   const handleRegister = (organizationId: string) => {
     setIsRegisterDialogOpen(false);
     navigate(`/register?organization=${organizationId}`);
-  };
-
-  // Check if there are any organizations in the database
-  const checkOrganizationsExist = async () => {
-    setIsCheckingOrgs(true);
-    try {
-      // First check if we already have organizations data loaded
-      if (organizations && organizations.length > 0) {
-        setIsRegisterDialogOpen(true);
-        setIsCheckingOrgs(false);
-        return true;
-      }
-      
-      // If no data yet or empty array, fetch directly from Supabase
-      console.log('Fetching organizations directly from Supabase');
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .limit(10);
-      
-      if (error) {
-        console.error('Error fetching organizations:', error);
-        toast.error("Failed to fetch organizations", {
-          description: error.message
-        });
-        setIsCheckingOrgs(false);
-        return false;
-      }
-      
-      if (!data || data.length === 0) {
-        console.log('No organizations found');
-        toast.error("No organizations found", {
-          description: "Please contact an administrator to set up organizations"
-        });
-        setIsCheckingOrgs(false);
-        return false;
-      }
-      
-      // If organizations exist, trigger a refetch and open dialog
-      console.log('Organizations found:', data.length);
-      await refetchOrgs();
-      setIsRegisterDialogOpen(true);
-      setIsCheckingOrgs(false);
-      return true;
-    } catch (error) {
-      console.error("Error checking organizations:", error);
-      toast.error("Failed to check organizations");
-      setIsCheckingOrgs(false);
-      return false;
-    }
-  };
-
-  const handleOpenRegisterDialog = () => {
-    checkOrganizationsExist();
   };
 
   if (organizationId && !isLoading) {
@@ -156,125 +70,36 @@ export default function Login() {
             Sign in to your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <Input 
-                id="email" 
-                type="email" 
-                required 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                placeholder="Enter your email" 
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                placeholder="Enter your password" 
-              />
-            </div>
-            
-            {loginError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2 text-sm text-red-700">
-                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-                <span>{loginError}</span>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full"
-              onClick={handleOpenRegisterDialog}
-              disabled={isCheckingOrgs}
-            >
-              {isCheckingOrgs ? (
-                <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                  Checking organizations...
-                </>
-              ) : 'Register'}
-            </Button>
-          </div>
-        </form>
+        
+        <LoginForm onSubmit={handleLogin} isSubmitting={isLoading} />
+        
+        <div className="mt-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full"
+            onClick={() => checkOrganizationsExist()}
+            disabled={isCheckingOrgs}
+          >
+            {isCheckingOrgs ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Checking organizations...
+              </>
+            ) : 'Register'}
+          </Button>
+        </div>
       </div>
 
-      <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Select Your Organization</DialogTitle>
-            <DialogDescription>
-              Choose an organization to register with
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            {isLoadingOrgs ? (
-              <p className="text-center text-gray-500 py-4">Loading organizations...</p>
-            ) : orgsError ? (
-              <div className="p-4 bg-red-50 border border-red-200 rounded text-center">
-                <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
-                <p className="text-red-700">Failed to load organizations</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2" 
-                  onClick={() => refetchOrgs()}
-                >
-                  Try Again
-                </Button>
-              </div>
-            ) : !organizations || organizations.length === 0 ? (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded text-center">
-                <AlertCircle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
-                <p className="text-amber-700">No organizations found</p>
-                <p className="text-sm text-amber-600 mt-1">
-                  Please contact an administrator to set up organizations
-                </p>
-              </div>
-            ) : (
-              organizations.map((org) => (
-                <Button
-                  key={org.id}
-                  variant="outline"
-                  className="w-full text-left justify-start h-auto py-4"
-                  onClick={() => handleRegister(org.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    {org.logo_url && (
-                      <img 
-                        src={org.logo_url} 
-                        alt={org.name} 
-                        className="w-8 h-8 object-contain"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'placeholder.svg';
-                        }}
-                      />
-                    )}
-                    <span>{org.name}</span>
-                  </div>
-                </Button>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <RegisterDialog
+        isOpen={isRegisterDialogOpen}
+        onOpenChange={setIsRegisterDialogOpen}
+        organizations={organizations}
+        isLoading={isLoadingOrgs}
+        error={orgsError}
+        onSelectOrganization={handleRegister}
+        onRefetch={refetchOrgs}
+      />
     </div>
   );
 }
