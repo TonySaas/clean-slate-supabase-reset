@@ -46,30 +46,26 @@ export const useRegisterDialog = () => {
         return true;
       }
       
-      // If not, refetch from the server with a shorter timeout
-      const result = await Promise.race([
-        refetch(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Fetch timeout")), 5000)
-        )
-      ]) as any;
+      // Simple refetch with no race condition
+      const result = await refetch();
       
       if (result.error) {
         console.error("Error fetching organizations:", result.error);
         throw result.error;
       }
       
+      // Force the loading state to end even if there's an issue with data
+      setIsCheckingOrgs(false);
+      
       if (!result.data || result.data.length === 0) {
         toast.error("No organizations found", {
           description: "Please contact an administrator to set up organizations"
         });
-        setIsCheckingOrgs(false);
         return false;
       }
       
       // If we have organizations, open the dialog
       setIsRegisterDialogOpen(true);
-      setIsCheckingOrgs(false);
       return true;
     } catch (error: any) {
       console.error("Error checking organizations:", error);

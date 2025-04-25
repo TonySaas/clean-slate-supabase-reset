@@ -61,15 +61,19 @@ export default function Login() {
     navigate(`/register?organization=${organizationId}`);
   };
   
-  const handleRegisterClick = async () => {
+  const handleRegisterClick = () => {
     // Prevent multiple clicks
     if (isCheckingOrgs) return;
     
-    try {
-      await checkOrganizationsExist();
-    } catch (error) {
+    toast.info("Checking for organizations...");
+    
+    // Use the promise to handle success/failure states
+    checkOrganizationsExist().catch(error => {
       console.error("Failed to check organizations:", error);
-    }
+      toast.error("Couldn't connect to server", {
+        description: "Please check your connection and try again"
+      });
+    });
   };
 
   if (organizationId && !authLoading) {
