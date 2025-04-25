@@ -32,11 +32,18 @@ export const useAuth = () => {
         if (session?.user) {
           try {
             // Fetch user profile
-            const { data: profileData, error: profileError } = await supabase
+            let profileData;
+            let profileError;
+
+            // First attempt to get the profile
+            const profileResult = await supabase
               .from('user_profiles')
               .select('*')
               .eq('id', session.user.id)
               .single();
+            
+            profileData = profileResult.data;
+            profileError = profileResult.error;
 
             if (profileError) {
               console.error('Error fetching profile:', profileError);
@@ -74,6 +81,7 @@ export const useAuth = () => {
                       
                     if (!newProfileError && newProfileData) {
                       profileData = newProfileData;
+                      profileError = null;
                     }
                   }
                 }
