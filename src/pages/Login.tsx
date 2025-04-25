@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,16 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
   const { data: organizations, isLoading: isLoadingOrgs } = useOrganizations();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Show success message if user just registered
+  useEffect(() => {
+    const justRegistered = searchParams.get('registered');
+    if (justRegistered === 'true') {
+      toast.success('Registration successful! Please log in to continue.');
+    }
+  }, [searchParams]);
 
   // Redirect if already logged in
   if (organizationId && !isLoading) {
@@ -26,6 +36,7 @@ export default function Login() {
     setIsSubmitting(true);
     try {
       await login(email, password);
+      // The redirect will happen automatically in the useAuth hook
     } catch (error: any) {
       toast.error('Login failed', {
         description: error.message || 'Please check your credentials and try again'

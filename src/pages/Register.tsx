@@ -84,12 +84,60 @@ export default function Register() {
         userId: authData.user.id,
         email: authData.user.email
       });
+      
+      // Fallback: Manually create user profile if trigger didn't work
+      try {
+        // Check if profile exists
+        const { data: existingProfile } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('id', authData.user.id)
+          .single();
+          
+        if (!existingProfile) {
+          console.log('User profile not found, creating manually...');
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: authData.user.id,
+              email: formData.email,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              job_title: formData.jobTitle,
+              organization_id: organizationId
+            });
+            
+          if (profileError) {
+            console.error('Error creating user profile:', profileError);
+          } else {
+            console.log('User profile created manually');
+          }
+        }
+
+        // Attempt to add user role if not already added by trigger
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role_id: 1 // Assuming 1 is the 'user' role ID
+          })
+          .select();
+          
+        if (roleError && !roleError.message.includes('duplicate')) {
+          console.error('Error creating user role:', roleError);
+        }
+      } catch (err) {
+        console.error('Error in fallback profile creation:', err);
+      }
 
       // Sign out the user after successful registration
       await supabase.auth.signOut();
       
       toast.success('Registration successful! Please check your email for verification and then log in.');
-      navigate('/login');
+      
+      // Redirect to login page with success message
+      navigate('/login?registered=true');
       
     } catch (error: any) {
       console.error('Unexpected registration error:', error);

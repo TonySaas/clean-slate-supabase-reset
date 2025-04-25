@@ -38,7 +38,49 @@ export const useAuth = () => {
               .eq('id', session.user.id)
               .single();
 
-            if (profileError) throw profileError;
+            if (profileError) {
+              console.error('Error fetching profile:', profileError);
+              // If profile doesn't exist but user is authenticated, create it from metadata
+              if (profileError.code === 'PGRST116') {
+                console.log('Profile not found, trying to create from metadata');
+                
+                // Get user metadata
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (user?.user_metadata) {
+                  const metadata = user.user_metadata;
+                  const { error: insertError } = await supabase
+                    .from('user_profiles')
+                    .insert({
+                      id: user.id,
+                      email: user.email,
+                      first_name: metadata.first_name,
+                      last_name: metadata.last_name,
+                      phone: metadata.phone,
+                      job_title: metadata.job_title,
+                      organization_id: metadata.organization_id
+                    });
+                    
+                  if (insertError) {
+                    console.error('Error creating profile from metadata:', insertError);
+                    toast.error('Failed to create user profile');
+                  } else {
+                    // Retry fetching the profile
+                    const { data: newProfileData, error: newProfileError } = await supabase
+                      .from('user_profiles')
+                      .select('*')
+                      .eq('id', user.id)
+                      .single();
+                      
+                    if (!newProfileError && newProfileData) {
+                      profileData = newProfileData;
+                    }
+                  }
+                }
+              } else {
+                throw profileError;
+              }
+            }
             
             if (profileData?.organization_id) {
               // Fetch user roles in a separate query
@@ -68,6 +110,9 @@ export const useAuth = () => {
 
               setOrganizationId(profileData.organization_id);
               setProfile(userProfile);
+              
+              // Navigate to dashboard with organization ID
+              console.log(`Redirecting to dashboard/${profileData.organization_id}`);
               navigate(`/dashboard/${profileData.organization_id}`);
             }
           } catch (error) {
@@ -96,11 +141,16 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
       if (error) throw error;
+      
+      // The onAuthStateChange event will handle the redirect to dashboard
+      console.log('Login successful for user:', data?.user?.email);
+      
     } catch (error) {
       console.error('Error logging in:', error);
       throw error;
