@@ -79,6 +79,40 @@ export default function Register() {
         email: authData.user.email
       });
       
+      // Ensure user profile exists
+      try {
+        const { data: existingProfile, error: profileFetchError } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('id', authData.user.id)
+          .single();
+        
+        if (profileFetchError && profileFetchError.code === 'PGRST116') {
+          console.log('User profile not found, creating manually');
+          
+          // Create profile manually if it wasn't created by the trigger
+          const { error: profileInsertError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: authData.user.id,
+              organization_id: organizationId,
+              email: formData.email,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              job_title: formData.jobTitle
+            });
+            
+          if (profileInsertError) {
+            console.error('Error creating user profile manually:', profileInsertError);
+          } else {
+            console.log('User profile created manually');
+          }
+        }
+      } catch (profileError) {
+        console.error('Error checking/creating profile:', profileError);
+      }
+      
       // Sign in the user immediately after successful registration
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,

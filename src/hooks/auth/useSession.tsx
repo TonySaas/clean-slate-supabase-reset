@@ -58,7 +58,33 @@ export const useSession = () => {
                 }
                 
                 console.log('Created new profile:', newProfile);
-                const userProfile = newProfile;
+                
+                // Use the newly created profile
+                if (newProfile) {
+                  // Fetch user roles
+                  const { data: userRolesData } = await supabase
+                    .from('user_roles')
+                    .select(`
+                      role_id,
+                      roles (id, name)
+                    `)
+                    .eq('user_id', session.user.id);
+                  
+                  const roles = userRolesData ? userRolesData.map(ur => ({
+                    id: ur.role_id,
+                    name: ur.roles?.name || ''
+                  })) : [];
+                  
+                  const completeProfile = {
+                    ...newProfile,
+                    roles
+                  };
+                  
+                  setOrganizationId(newProfile.organization_id);
+                  setProfile(completeProfile);
+                  setIsLoading(false);
+                  return;
+                }
               } else {
                 toast.error('Error loading user profile');
                 setIsLoading(false);
@@ -66,7 +92,7 @@ export const useSession = () => {
               }
             }
             
-            if (!userProfile.organization_id) {
+            if (!userProfile || !userProfile.organization_id) {
               console.error('User profile has no organization_id:', userProfile);
               toast.error('Your account is not associated with an organization');
               setIsLoading(false);
