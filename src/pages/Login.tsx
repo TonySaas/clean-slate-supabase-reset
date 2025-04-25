@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -63,15 +62,19 @@ export default function Login() {
   
   const handleRegisterClick = () => {
     // Prevent multiple clicks
-    if (isCheckingOrgs) return;
+    if (isCheckingOrgs) {
+      toast.info("Still checking for organizations...", {
+        description: "Please wait a moment"
+      });
+      return;
+    }
     
     toast.info("Checking for organizations...");
     
-    // Use the promise to handle success/failure states
     checkOrganizationsExist().catch(error => {
       console.error("Failed to check organizations:", error);
-      toast.error("Couldn't connect to server", {
-        description: "Please check your connection and try again"
+      toast.error("Couldn't verify organizations", {
+        description: "Please try again in a moment"
       });
     });
   };

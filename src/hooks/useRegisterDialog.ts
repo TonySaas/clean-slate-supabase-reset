@@ -24,7 +24,7 @@ export const useRegisterDialog = () => {
         toast.error("Operation timed out", {
           description: "Failed to check organizations. Please try again."
         });
-      }, 8000);
+      }, 5000); // Reduced timeout to 5 seconds
     }
     
     return () => {
@@ -46,18 +46,11 @@ export const useRegisterDialog = () => {
         return true;
       }
       
-      // Simple refetch with no race condition
-      const result = await refetch();
+      // Clear the cache before refetching
+      await refetch({ throwOnError: true });
       
-      if (result.error) {
-        console.error("Error fetching organizations:", result.error);
-        throw result.error;
-      }
-      
-      // Force the loading state to end even if there's an issue with data
-      setIsCheckingOrgs(false);
-      
-      if (!result.data || result.data.length === 0) {
+      // Check if organizations exist after refetch
+      if (!organizations || organizations.length === 0) {
         toast.error("No organizations found", {
           description: "Please contact an administrator to set up organizations"
         });
@@ -72,8 +65,10 @@ export const useRegisterDialog = () => {
       toast.error("Failed to check organizations", {
         description: "Please try again or contact support"
       });
-      setIsCheckingOrgs(false);
       return false;
+    } finally {
+      // Always reset checking state
+      setIsCheckingOrgs(false);
     }
   };
 
