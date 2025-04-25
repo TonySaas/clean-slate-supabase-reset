@@ -30,8 +30,13 @@ export const useOrganizations = () => {
           throw orgsError;
         }
 
-        if (!orgsData || orgsData.length === 0) {
-          console.log('No organizations found in the database');
+        if (!orgsData) {
+          console.log('No organizations data returned (null)');
+          return [];
+        }
+        
+        if (orgsData.length === 0) {
+          console.log('No organizations found in the database (empty array)');
           return [];
         }
 
@@ -51,7 +56,7 @@ export const useOrganizations = () => {
         throw error;
       }
     },
-    retry: 1,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    retry: 2,
+    staleTime: 10000, // Consider data fresh for 10 seconds
   });
 };

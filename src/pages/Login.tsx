@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useOrganizations } from '@/hooks/useOrganizations';
-import { AlertTriangle, AlertCircle } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Login() {
@@ -17,6 +17,7 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
+  const [isCheckingOrgs, setIsCheckingOrgs] = useState(false);
   const { data: organizations, isLoading: isLoadingOrgs, error: orgsError, refetch: refetchOrgs } = useOrganizations();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -72,13 +73,14 @@ export default function Login() {
 
   // Check if there are any organizations in the database
   const checkOrganizationsExist = async () => {
+    setIsCheckingOrgs(true);
     try {
       // If we don't have organizations data yet, fetch directly
       if (!organizations || organizations.length === 0) {
         const { data, error } = await supabase
           .from('organizations')
           .select('id, name')
-          .limit(1);
+          .limit(5);
         
         if (error) throw error;
         
@@ -86,24 +88,38 @@ export default function Login() {
           toast.error("No organizations found", {
             description: "Please contact an administrator to set up organizations"
           });
+          setIsCheckingOrgs(false);
           return false;
         }
+        
+        // If there are organizations, populate them and open the dialog
+        refetchOrgs();
+        setIsRegisterDialogOpen(true);
+        setIsCheckingOrgs(false);
         return true;
       }
       
-      return organizations.length > 0;
+      if (organizations.length > 0) {
+        setIsRegisterDialogOpen(true);
+        setIsCheckingOrgs(false);
+        return true;
+      } else {
+        toast.error("No organizations found", {
+          description: "Please contact an administrator to set up organizations"
+        });
+        setIsCheckingOrgs(false);
+        return false;
+      }
     } catch (error) {
       console.error("Error checking organizations:", error);
       toast.error("Failed to check organizations");
+      setIsCheckingOrgs(false);
       return false;
     }
   };
 
   const handleOpenRegisterDialog = async () => {
-    const hasOrgs = await checkOrganizationsExist();
-    if (hasOrgs) {
-      setIsRegisterDialogOpen(true);
-    }
+    await checkOrganizationsExist();
   };
 
   if (organizationId && !isLoading) {
@@ -164,8 +180,14 @@ export default function Login() {
               variant="outline" 
               className="w-full"
               onClick={handleOpenRegisterDialog}
+              disabled={isCheckingOrgs}
             >
-              Register
+              {isCheckingOrgs ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  Checking organizations...
+                </>
+              ) : 'Register'}
             </Button>
           </div>
         </form>
