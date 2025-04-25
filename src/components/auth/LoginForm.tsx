@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LoginFormProps {
@@ -41,6 +41,7 @@ export const LoginForm = ({ onSubmit, isSubmitting }: LoginFormProps) => {
             value={email} 
             onChange={e => setEmail(e.target.value)} 
             placeholder="Enter your email" 
+            disabled={isSubmitting}
           />
         </div>
         <div>
@@ -54,6 +55,7 @@ export const LoginForm = ({ onSubmit, isSubmitting }: LoginFormProps) => {
             value={password} 
             onChange={e => setPassword(e.target.value)} 
             placeholder="Enter your password" 
+            disabled={isSubmitting}
           />
         </div>
         
@@ -65,7 +67,12 @@ export const LoginForm = ({ onSubmit, isSubmitting }: LoginFormProps) => {
         )}
       </div>
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Signing in...' : 'Sign in'}
+        {isSubmitting ? (
+          <>
+            <Loader2 size={16} className="mr-2 animate-spin" />
+            Signing in...
+          </>
+        ) : 'Sign in'}
       </Button>
     </form>
   );

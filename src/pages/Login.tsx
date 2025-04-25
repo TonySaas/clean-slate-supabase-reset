@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,8 @@ import { RegisterDialog } from '@/components/auth/RegisterDialog';
 import { useRegisterDialog } from '@/hooks/useRegisterDialog';
 
 export default function Login() {
-  const { login, isLoading, organizationId } = useAuth();
+  const { login, isLoading: authLoading, organizationId } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
@@ -32,14 +33,15 @@ export default function Login() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (organizationId && !isLoading) {
+    if (organizationId && !authLoading) {
       console.log('User already logged in, redirecting to dashboard with org ID:', organizationId);
       navigate(`/dashboard/${organizationId}`, { replace: true });
     }
-  }, [organizationId, isLoading, navigate]);
+  }, [organizationId, authLoading, navigate]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
+      setIsSubmitting(true);
       console.log('Attempting login for:', email);
       await login(email, password);
       console.log('Login function completed');
@@ -49,6 +51,8 @@ export default function Login() {
         description: error.message || 'Please check your credentials and try again'
       });
       throw error;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -57,7 +61,7 @@ export default function Login() {
     navigate(`/register?organization=${organizationId}`);
   };
 
-  if (organizationId && !isLoading) {
+  if (organizationId && !authLoading) {
     console.log('Redirecting to dashboard in render with org ID:', organizationId);
     return <Navigate to={`/dashboard/${organizationId}`} replace />;
   }
@@ -71,7 +75,7 @@ export default function Login() {
           </h2>
         </div>
         
-        <LoginForm onSubmit={handleLogin} isSubmitting={isLoading} />
+        <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} />
         
         <div className="mt-4">
           <Button 

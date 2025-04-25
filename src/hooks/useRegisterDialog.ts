@@ -33,16 +33,20 @@ export const useRegisterDialog = () => {
 
   const checkOrganizationsExist = async () => {
     setIsCheckingOrgs(true);
+    
     try {
+      // First check if we already have organizations in cache
       if (organizations && organizations.length > 0) {
         setIsRegisterDialogOpen(true);
         setIsCheckingOrgs(false);
         return true;
       }
       
+      // If not, refetch from the server
       const result = await refetch();
       
       if (result.error) {
+        console.error("Error fetching organizations:", result.error);
         throw result.error;
       }
       
@@ -54,12 +58,15 @@ export const useRegisterDialog = () => {
         return false;
       }
       
+      // If we have organizations, open the dialog
       setIsRegisterDialogOpen(true);
       setIsCheckingOrgs(false);
       return true;
     } catch (error) {
       console.error("Error checking organizations:", error);
-      toast.error("Failed to check organizations");
+      toast.error("Failed to check organizations", {
+        description: "Please try again or contact support"
+      });
       setIsCheckingOrgs(false);
       return false;
     }
