@@ -21,7 +21,8 @@ export default function Login() {
     checkOrganizationsExist,
     organizations,
     isLoading: isLoadingOrgs,
-    error: orgsError
+    error: orgsError,
+    refetch
   } = useRegisterDialog();
 
   useEffect(() => {
@@ -101,6 +102,7 @@ export default function Login() {
         isLoading={isLoadingOrgs}
         error={orgsError}
         onSelectOrganization={handleRegister}
+        onRefetch={refetch}
       />
     </div>
   );
