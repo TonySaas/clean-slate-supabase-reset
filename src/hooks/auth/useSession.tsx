@@ -23,7 +23,7 @@ export type UserProfile = {
 
 export const useSession = () => {
   const { isLoading, organizationId, updateAuthState, setIsLoading } = useAuthState();
-  const { profile, fetchOrCreateProfile } = useUserProfile(supabase.auth.getUser()?.data?.user?.id);
+  const { profile, fetchOrCreateProfile } = useUserProfile();
 
   useEffect(() => {
     console.log('Setting up auth state change listener');

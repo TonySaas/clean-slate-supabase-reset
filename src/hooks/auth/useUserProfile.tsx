@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { UserProfile } from './useSession';
+import { Session } from '@supabase/supabase-js';
 
-export const useUserProfile = (userId: string | undefined) => {
+export const useUserProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  const fetchOrCreateProfile = async (session: any) => {
+  const fetchOrCreateProfile = async (session: Session) => {
     if (!session?.user) return null;
     
     try {
