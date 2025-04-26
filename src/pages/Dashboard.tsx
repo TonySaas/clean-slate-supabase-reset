@@ -5,7 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut } from 'lucide-react';
+import { LogOut, UserRound, Briefcase } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 interface Organization {
   id: string;
@@ -13,7 +14,7 @@ interface Organization {
 }
 
 export default function Dashboard() {
-  const { organizationId: userOrgId, logout, isLoading } = useAuth();
+  const { organizationId: userOrgId, logout, isLoading, profile } = useAuth();
   const { organizationId } = useParams<{ organizationId: string }>();
   const [organization, setOrganization] = useState<Organization | null>(null);
 
@@ -77,6 +78,32 @@ export default function Dashboard() {
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserRound className="h-6 w-6" />
+              Welcome, {profile?.first_name || 'User'}!
+            </CardTitle>
+            <CardDescription>
+              Here's your profile information
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">{profile?.job_title || 'No position set'}</span>
+              </div>
+              <div className="text-sm text-gray-600">
+                <strong>Email:</strong> {profile?.email}
+              </div>
+              <div className="text-sm text-gray-600">
+                <strong>Name:</strong> {profile?.first_name} {profile?.last_name}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="bg-white shadow rounded-lg p-6">
           <p className="text-gray-600 mb-4">
             Welcome to your organization's dashboard!
