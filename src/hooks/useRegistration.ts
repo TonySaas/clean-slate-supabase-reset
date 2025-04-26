@@ -72,29 +72,27 @@ export const useRegistration = (organizationId: string | null) => {
         email: authData.user.email
       });
       
-      // Wait a longer delay to ensure the auth process completes
-      // This gives more time for the database trigger to run if it exists
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Step 2: Check if profile already exists
-      const { data: existingProfile, error: profileCheckError } = await supabase
+      // Create the user profile directly instead of waiting for trigger
+      console.log('Creating user profile manually...');
+      const { error: profileError } = await supabase
         .from('user_profiles')
-        .select('id')
-        .eq('id', authData.user.id)
-        .single();
+        .insert({
+          id: authData.user.id,
+          organization_id: organizationId,
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          job_title: formData.jobTitle
+        });
         
-      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        console.error('Error checking for profile:', profileCheckError);
-      }
-      
-      // Step 3: Manually create profile if it doesn't exist
-      if (!existingProfile) {
-        console.log('No profile found, creating one manually');
+      if (profileError) {
+        console.error('Failed to create profile:', profileError);
         
-        // Direct insert instead of RPC
-        const { error: profileError } = await supabase
+        // Try upsert as fallback
+        const { error: upsertError } = await supabase
           .from('user_profiles')
-          .insert({
+          .upsert({
             id: authData.user.id,
             organization_id: organizationId,
             email: formData.email,
@@ -102,65 +100,81 @@ export const useRegistration = (organizationId: string | null) => {
             last_name: formData.lastName,
             phone: formData.phone,
             job_title: formData.jobTitle
-          });
+          }, { onConflict: 'id' });
           
-        if (profileError) {
-          console.error('Failed to create user profile:', profileError);
-          // Try upsert as a fallback
-          const { error: upsertError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              id: authData.user.id,
-              organization_id: organizationId,
-              email: formData.email,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              phone: formData.phone,
-              job_title: formData.jobTitle
-            }, { onConflict: 'id' });
-            
-          if (upsertError) {
-            console.error('Failed to upsert user profile:', upsertError);
-            setErrorDetails(`Profile creation failed: ${upsertError.message}`);
-            setIsSubmitting(false);
-            return;
-          } else {
-            console.log('User profile upserted successfully');
-          }
+        if (upsertError) {
+          console.error('Failed to upsert profile:', upsertError);
         } else {
-          console.log('User profile created successfully via direct insert');
+          console.log('Profile created via upsert');
         }
       } else {
-        console.log('User profile already exists, skipping creation');
+        console.log('Profile created successfully');
       }
       
-      // Step 4: Assign default role to the user
-      try {
-        const { data: roleData } = await supabase
-          .from('roles')
-          .select('id')
-          .eq('name', 'user')
-          .single();
+      // Assign roles: both 'user' and 'org_admin' roles
+      console.log('Assigning user roles...');
+      
+      // Get the regular user role
+      const { data: userRoleData } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'user')
+        .single();
+        
+      if (userRoleData) {
+        const { error: userRoleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role_id: userRoleData.id
+          });
           
-        if (roleData) {
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: authData.user.id,
-              role_id: roleData.id
-            });
-            
-          if (roleError) {
-            console.error('Error assigning user role:', roleError);
-          } else {
-            console.log('User role assigned successfully');
-          }
+        if (userRoleError) {
+          console.error('Failed to assign user role:', userRoleError);
+        } else {
+          console.log('User role assigned successfully');
         }
-      } catch (roleErr) {
-        console.error('Error finding or assigning role:', roleErr);
       }
       
-      // Step 5: Auto sign in the user
+      // Get the org_admin role
+      const { data: adminRoleData } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'org_admin')
+        .single();
+        
+      if (adminRoleData) {
+        const { error: adminRoleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role_id: adminRoleData.id
+          });
+          
+        if (adminRoleError) {
+          console.error('Failed to assign org_admin role:', adminRoleError);
+        } else {
+          console.log('Org admin role assigned successfully');
+        }
+      } else {
+        console.error('Could not find org_admin role');
+      }
+      
+      // Also add entry to organization_admins table
+      const { error: orgAdminError } = await supabase
+        .from('organization_admins')
+        .insert({
+          user_id: authData.user.id,
+          organization_id: organizationId
+        });
+        
+      if (orgAdminError) {
+        console.error('Failed to add to organization_admins table:', orgAdminError);
+      } else {
+        console.log('Added to organization_admins table');
+      }
+      
+      // Auto sign in the user
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -190,4 +204,3 @@ export const useRegistration = (organizationId: string | null) => {
     emailError
   };
 };
-
