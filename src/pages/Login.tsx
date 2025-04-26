@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterDialog } from '@/components/auth/RegisterDialog';
 import { useRegisterDialog } from '@/hooks/useRegisterDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Login() {
   const { login, isLoading: authLoading, organizationId } = useAuth();
@@ -24,21 +25,29 @@ export default function Login() {
     error: orgsError,
     refetch
   } = useRegisterDialog();
+  const [forceShowLogin, setForceShowLogin] = useState(false);
 
   useEffect(() => {
     const justRegistered = searchParams.get('registered');
     if (justRegistered === 'true') {
       toast.success('Registration successful! Please log in.');
     }
+    
+    // Check if we have a logout parameter to force showing login
+    const showLogin = searchParams.get('logout');
+    if (showLogin === 'true') {
+      setForceShowLogin(true);
+    }
   }, [searchParams]);
 
   // Use this effect to redirect only if user is fully authenticated with organization
+  // and we're not forcing the login page to show
   useEffect(() => {
-    if (organizationId && !authLoading) {
+    if (organizationId && !authLoading && !forceShowLogin) {
       console.log('User authenticated with organization, redirecting to dashboard:', organizationId);
       navigate(`/dashboard/${organizationId}`, { replace: true });
     }
-  }, [organizationId, authLoading, navigate]);
+  }, [organizationId, authLoading, navigate, forceShowLogin]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -66,8 +75,16 @@ export default function Login() {
     checkOrganizationsExist();
   };
 
-  // If user is already authenticated and has an organization, redirect to dashboard
-  if (organizationId && !authLoading) {
+  // Handle manual logout if needed
+  const handleForceLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success('Logged out successfully');
+    setForceShowLogin(true);
+  };
+
+  // If user is already authenticated and has an organization, and we're not forcing login display,
+  // redirect to dashboard
+  if (organizationId && !authLoading && !forceShowLogin) {
     return <Navigate to={`/dashboard/${organizationId}`} replace />;
   }
 
@@ -79,6 +96,23 @@ export default function Login() {
             Sign in to your account
           </h2>
         </div>
+        
+        {/* Show a "Force Logout" button if user is already authenticated but we're forcing login screen */}
+        {organizationId && forceShowLogin && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4">
+            <p className="text-yellow-800 text-sm mb-2">
+              You're already logged in but viewing the login page.
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleForceLogout}
+              className="w-full"
+            >
+              Sign out to login as different user
+            </Button>
+          </div>
+        )}
         
         <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} />
         

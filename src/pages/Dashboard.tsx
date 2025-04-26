@@ -43,6 +43,12 @@ export default function Dashboard() {
     await logout();
     toast.success('Logged out successfully');
   };
+  
+  const handleLogoutToLogin = async () => {
+    await logout();
+    // Navigate to login with param to force showing login screen even if there's a session
+    window.location.href = '/login?logout=true';
+  };
 
   // Redirect if not logged in or wrong organization
   if (!isLoading && (!userOrgId || userOrgId !== organizationId)) {
@@ -78,7 +84,7 @@ export default function Dashboard() {
           <div className="border-t pt-4 mt-4">
             <h2 className="text-lg font-medium mb-2">Testing Options</h2>
             <div className="flex flex-col space-y-2">
-              <Button variant="destructive" onClick={handleLogout} className="flex items-center gap-2 w-fit">
+              <Button variant="destructive" onClick={handleLogoutToLogin} className="flex items-center gap-2 w-fit">
                 <LogOut size={16} />
                 Sign out to test registration/login
               </Button>

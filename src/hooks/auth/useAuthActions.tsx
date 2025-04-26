@@ -32,7 +32,7 @@ export const useAuthActions = () => {
     }
   };
 
-  const logout = async () => {
+  const logout = async (redirectToLogin: boolean = false) => {
     try {
       console.log('Logging out...');
       const { error } = await supabase.auth.signOut();
@@ -43,7 +43,13 @@ export const useAuthActions = () => {
       
       console.log('Logout successful, redirecting to login page');
       toast.success('Logged out successfully');
-      navigate('/login');
+      
+      if (redirectToLogin) {
+        // Force showing login page even if there's a session
+        navigate('/login?logout=true');
+      } else {
+        navigate('/login');
+      }
     } catch (error: any) {
       console.error('Error logging out:', error);
       toast.error('Error logging out: ' + (error.message || 'Unknown error'));
