@@ -27,6 +27,10 @@ export function DashboardSidebar() {
   const { profile, logout } = useAuth();
   const firstName = profile?.first_name || 'User';
 
+  const handleLogout = () => {
+    logout();
+  };
+
   const menuItems = [
     { title: 'Dashboard', icon: LayoutDashboard, url: `/dashboard/${organizationId}` },
     { title: 'Campaigns', icon: Megaphone, url: '#' },
@@ -78,7 +82,7 @@ export function DashboardSidebar() {
           <div className="flex flex-col">
             <span className="text-sm font-medium">{firstName}</span>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
             >
               <LogOut size={14} />
