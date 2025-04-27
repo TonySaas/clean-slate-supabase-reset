@@ -25,6 +25,12 @@ export default function Dashboard() {
   const isCreateCampaign = location.pathname.includes('/campaign/new');
   
   useEffect(() => {
+    if (profile) {
+      console.log('Dashboard - User profile:', profile);
+    }
+  }, [profile]);
+  
+  useEffect(() => {
     const fetchOrganization = async () => {
       try {
         const { data, error } = await supabase
@@ -58,7 +64,8 @@ export default function Dashboard() {
     );
   }
 
-  const firstName = profile?.first_name || 'User';
+  // Use optional chaining and nullish coalescing for safer access to profile data
+  const firstName = profile?.first_name || profile?.email?.split('@')[0] || 'User';
 
   return (
     <SidebarProvider>

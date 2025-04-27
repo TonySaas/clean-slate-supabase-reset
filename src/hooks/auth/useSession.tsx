@@ -23,8 +23,8 @@ export type UserProfile = {
 };
 
 export const useSession = () => {
-  const { isLoading, organizationId, updateAuthState, setIsLoading } = useAuthState();
-  const { profile, fetchOrCreateProfile } = useUserProfile();
+  const { isLoading, organizationId, profile, updateAuthState, setIsLoading } = useAuthState();
+  const { fetchOrCreateProfile } = useUserProfile();
 
   useEffect(() => {
     console.log('Setting up auth state change listener');

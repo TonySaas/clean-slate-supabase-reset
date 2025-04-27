@@ -14,23 +14,39 @@ export const useUserProfile = () => {
     try {
       console.log('Fetching or creating profile for user:', session.user.id);
       
-      // First, verify user exists in users table
-      const { count } = await supabase
+      // First, check if user exists in users table
+      const { count: userCount, error: countError } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('id', session.user.id);
+        
+      if (countError) {
+        console.error('Error checking user existence:', countError);
+      }
 
-      if (count === 0) {
+      // If user doesn't exist in users table, create it
+      if (!userCount || userCount === 0) {
         console.log('User does not exist in users table, creating...');
+        
+        // Extract user metadata
+        const firstName = session.user.user_metadata?.first_name;
+        const lastName = session.user.user_metadata?.last_name;
+        const phone = session.user.phone;
+        const jobTitle = session.user.user_metadata?.job_title;
+        
         await supabase
           .from('users')
           .upsert({
             id: session.user.id,
-            email: session.user.email,
-            first_name: session.user.user_metadata?.first_name,
-            last_name: session.user.user_metadata?.last_name,
-            phone: session.user.phone,
+            first_name: firstName,
+            last_name: lastName,
+            phone: phone,
+            job_title: jobTitle,
+            profile_image_url: null,
+            active: true
           });
+          
+        console.log('Created user in users table');
       }
 
       // Check if user profile exists
@@ -79,7 +95,28 @@ export const useUserProfile = () => {
           }
           
           console.log('Created new profile:', newProfile);
-          return newProfile;
+          
+          // Add the user to organization_admins table if they have the org_admin role
+          const { data: userRoles } = await supabase
+            .from('user_roles')
+            .select('roles(name)')
+            .eq('user_id', session.user.id);
+            
+          const isOrgAdmin = userRoles?.some(role => 
+            role.roles?.name === 'org_admin'
+          );
+            
+          if (isOrgAdmin) {
+            console.log('User is an org admin, adding to organization_admins table');
+            await supabase
+              .from('organization_admins')
+              .upsert({
+                organization_id: newProfile.organization_id,
+                user_id: session.user.id
+              });
+          }
+          
+          return addUserRolesToProfile(newProfile, session.user.id);
         } else {
           toast.error('Error loading user profile');
           return null;
@@ -88,6 +125,10 @@ export const useUserProfile = () => {
       
       // Add roles to the profile
       const roleData = await addUserRolesToProfile(userProfile, session.user.id);
+      
+      // Set the profile state
+      setProfile(roleData);
+      
       return roleData;
       
     } catch (error) {

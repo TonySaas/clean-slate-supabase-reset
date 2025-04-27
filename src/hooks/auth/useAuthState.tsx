@@ -1,15 +1,18 @@
 
 import { useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { UserProfile } from './useSession';
 
 export const useAuthState = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  const updateAuthState = (profile: any | null) => {
-    if (profile) {
-      setOrganizationId(profile.organization_id);
+  const updateAuthState = (userProfile: UserProfile | null) => {
+    if (userProfile) {
+      setProfile(userProfile);
+      setOrganizationId(userProfile.organization_id);
     } else {
+      setProfile(null);
       setOrganizationId(null);
     }
     setIsLoading(false);
@@ -18,6 +21,7 @@ export const useAuthState = () => {
   return {
     isLoading,
     setIsLoading,
+    profile,
     organizationId,
     updateAuthState
   };
