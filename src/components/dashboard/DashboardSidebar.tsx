@@ -76,9 +76,9 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar className="bg-[#1f2937] text-white border-r-0">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="bg-white/10 h-10 w-10 rounded flex items-center justify-center overflow-hidden">
+      <SidebarHeader className="p-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="bg-white/10 h-12 w-12 rounded-md flex items-center justify-center overflow-hidden">
             {organization?.logo_url ? (
               <img 
                 src={organization.logo_url} 
@@ -86,14 +86,17 @@ export function DashboardSidebar() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="text-white font-bold">
+              <span className="text-white font-bold text-xl">
                 {organization?.name?.charAt(0) || 'O'}
               </span>
             )}
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-white text-sm">
+            <span className="font-bold text-white text-base truncate max-w-[150px]">
               {organization?.name || 'Organization'}
+            </span>
+            <span className="text-white/70 text-xs">
+              Admin Dashboard
             </span>
           </div>
         </div>

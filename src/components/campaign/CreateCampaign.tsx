@@ -37,55 +37,6 @@ export function CreateCampaign() {
 
     setIsSubmitting(true);
     try {
-      // Ensure user exists in the users table with a more robust approach
-      const { data: userData, error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', profile.id)
-        .maybeSingle();
-        
-      if (userCheckError) {
-        console.error('Error checking user existence:', userCheckError);
-      }
-      
-      // If user doesn't exist in users table, create them with retry logic
-      if (!userData) {
-        console.log('User not found in users table, creating entry');
-        
-        const userInsertData = {
-          id: profile.id,
-          first_name: profile.first_name || profile.email?.split('@')[0] || 'User',
-          last_name: profile.last_name || '',
-          active: true
-        };
-        
-        // Try up to 3 times to create the user
-        let userCreated = false;
-        let attempts = 0;
-        
-        while (!userCreated && attempts < 3) {
-          attempts++;
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert(userInsertData);
-            
-          if (!insertError) {
-            console.log('User record created successfully on attempt', attempts);
-            userCreated = true;
-          } else {
-            console.error(`Error creating user record (attempt ${attempts}):`, insertError);
-            // Wait a moment before retrying
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-        
-        if (!userCreated) {
-          toast.error("Failed to create user record. Please try again later.");
-          setIsSubmitting(false);
-          return;
-        }
-      }
-      
       console.log("Creating campaign with data:", {
         name: campaignName,
         start_date: date.from.toISOString(),
@@ -94,7 +45,39 @@ export function CreateCampaign() {
         created_by: profile.id,
       });
 
-      const { data, error } = await supabase
+      // First ensure user exists in users table
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      // If user doesn't exist in users table, create them
+      if (!existingUser) {
+        console.log('Creating user record before campaign creation');
+        
+        const userInsertData = {
+          id: profile.id,
+          first_name: profile.first_name || '',
+          last_name: profile.last_name || '',
+          active: true
+        };
+        
+        const { error: userInsertError } = await supabase
+          .from('users')
+          .insert(userInsertData);
+          
+        if (userInsertError) {
+          console.error('Error creating user record:', userInsertError);
+          toast.error("Failed to setup user record. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+        console.log('User record created successfully');
+      }
+
+      // Now create the campaign
+      const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
         .insert({
           name: campaignName,
@@ -105,12 +88,12 @@ export function CreateCampaign() {
         })
         .select();
 
-      if (error) {
-        console.error('Error creating campaign:', error);
-        throw error;
+      if (campaignError) {
+        console.error('Error creating campaign:', campaignError);
+        throw campaignError;
       }
 
-      console.log('Campaign created successfully:', data);
+      console.log('Campaign created successfully:', campaignData);
       toast.success("Campaign created successfully");
       navigate(`/dashboard/${organizationId}`);
     } catch (error: any) {
