@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   startOfMonth,
   endOfMonth,
@@ -19,8 +20,8 @@ export function CampaignCalendar({ selected, onSelect }: CampaignCalendarProps) 
   const today = new Date();
   const [month, setMonth] = useState(today);
 
-  // Generate next 12 months from today
-  const futureMonths = Array.from({ length: 12 }, (_, i) => {
+  // Generate next 7 months from today
+  const futureMonths = Array.from({ length: 7 }, (_, i) => {
     const monthDate = addMonths(today, i);
     return {
       date: monthDate,
@@ -38,21 +39,23 @@ export function CampaignCalendar({ selected, onSelect }: CampaignCalendarProps) 
   return (
     <div className="rounded-lg border border-border">
       <div className="flex max-sm:flex-col">
-        <div className="relative border-border py-4 max-sm:order-1 max-sm:border-t sm:w-40">
+        <div className="relative border-border py-4 max-sm:order-1 sm:w-40">
           <div className="h-full border-border sm:border-e">
-            <div className="flex flex-col px-2 space-y-1">
-              {futureMonths.map((monthItem) => (
-                <Button
-                  key={monthItem.label}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start text-sm"
-                  onClick={() => handleMonthSelect(monthItem.date)}
-                >
-                  {monthItem.label}
-                </Button>
-              ))}
-            </div>
+            <ScrollArea className="h-60 px-2">
+              <div className="flex flex-col space-y-1">
+                {futureMonths.map((monthItem) => (
+                  <Button
+                    key={monthItem.label}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-sm"
+                    onClick={() => handleMonthSelect(monthItem.date)}
+                  >
+                    {monthItem.label}
+                  </Button>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         </div>
         <Calendar

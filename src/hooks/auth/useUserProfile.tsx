@@ -15,34 +15,27 @@ export const useUserProfile = () => {
       console.log('Fetching or creating profile for user:', session.user.id);
       
       // First, check if user exists in users table
-      const { count: userCount, error: countError } = await supabase
+      const { data: userExists, error: userError } = await supabase
         .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('id', session.user.id);
+        .select('id')
+        .eq('id', session.user.id)
+        .single();
         
-      if (countError) {
-        console.error('Error checking user existence:', countError);
-      }
-
-      // If user doesn't exist in users table, create it
-      if (!userCount || userCount === 0) {
+      if (userError || !userExists) {
         console.log('User does not exist in users table, creating...');
         
         // Extract user metadata
         const firstName = session.user.user_metadata?.first_name;
         const lastName = session.user.user_metadata?.last_name;
         const phone = session.user.phone;
-        const jobTitle = session.user.user_metadata?.job_title;
         
         await supabase
           .from('users')
-          .upsert({
+          .insert({
             id: session.user.id,
-            first_name: firstName,
-            last_name: lastName,
+            first_name: firstName || session.user.email?.split('@')[0] || 'User',
+            last_name: lastName || '',
             phone: phone,
-            job_title: jobTitle,
-            profile_image_url: null,
             active: true
           });
           
@@ -80,8 +73,8 @@ export const useUserProfile = () => {
             .upsert({
               id: session.user.id,
               email: session.user.email,
-              first_name: session.user.user_metadata?.first_name,
-              last_name: session.user.user_metadata?.last_name,
+              first_name: session.user.user_metadata?.first_name || session.user.email?.split('@')[0] || 'User',
+              last_name: session.user.user_metadata?.last_name || '',
               phone: session.user.phone,
               organization_id: session.user.user_metadata?.organization_id || orgData?.id
             })

@@ -37,6 +37,33 @@ export function CreateCampaign() {
 
     setIsSubmitting(true);
     try {
+      // Check if the user exists in the users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', profile.id)
+        .single();
+        
+      // If user doesn't exist in the users table, create them
+      if (userError || !userData) {
+        console.log('User not found in users table, creating entry');
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: profile.id,
+            first_name: profile.first_name || profile.email?.split('@')[0] || 'User',
+            last_name: profile.last_name || '',
+            active: true
+          });
+          
+        if (insertError) {
+          console.error('Error creating user record:', insertError);
+          toast.error("Failed to create user record");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
       console.log("Creating campaign with data:", {
         name: campaignName,
         start_date: date.from.toISOString(),
