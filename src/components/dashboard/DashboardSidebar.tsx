@@ -1,5 +1,6 @@
 
 import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard,
   Megaphone,
@@ -22,10 +24,41 @@ import {
   LogOut
 } from 'lucide-react';
 
+interface Organization {
+  id: string;
+  name: string;
+  logo_url: string | null;
+}
+
 export function DashboardSidebar() {
   const { organizationId } = useParams<{ organizationId: string }>();
   const { profile, logout } = useAuth();
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const firstName = profile?.first_name || 'User';
+
+  useEffect(() => {
+    const fetchOrganization = async () => {
+      if (organizationId) {
+        try {
+          const { data, error } = await supabase
+            .from('organizations')
+            .select('id, name, logo_url')
+            .eq('id', organizationId)
+            .single();
+
+          if (error) {
+            console.error('Error fetching organization:', error);
+          } else if (data) {
+            setOrganization(data);
+          }
+        } catch (err) {
+          console.error('Error in fetching organization details:', err);
+        }
+      }
+    };
+
+    fetchOrganization();
+  }, [organizationId]);
 
   const handleLogout = () => {
     logout();
@@ -45,10 +78,24 @@ export function DashboardSidebar() {
     <Sidebar className="bg-[#1f2937] text-white border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <div className="bg-white/10 text-white font-bold h-8 w-8 rounded flex items-center justify-center">
-            O
+          <div className="bg-white/10 h-10 w-10 rounded flex items-center justify-center overflow-hidden">
+            {organization?.logo_url ? (
+              <img 
+                src={organization.logo_url} 
+                alt={`${organization?.name || 'Organization'} logo`} 
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-white font-bold">
+                {organization?.name?.charAt(0) || 'O'}
+              </span>
+            )}
           </div>
-          <span className="font-semibold text-white">Organization</span>
+          <div className="flex flex-col">
+            <span className="font-semibold text-white text-sm">
+              {organization?.name || 'Organization'}
+            </span>
+          </div>
         </div>
       </SidebarHeader>
       

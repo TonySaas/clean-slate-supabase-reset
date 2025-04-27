@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from "date-fns";
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,28 +37,50 @@ export function CreateCampaign() {
 
     setIsSubmitting(true);
     try {
-      // Check if the user exists in the users table
-      const { data: userData, error: userError } = await supabase
+      // Ensure user exists in the users table with a more robust approach
+      const { data: userData, error: userCheckError } = await supabase
         .from('users')
         .select('id')
         .eq('id', profile.id)
-        .single();
+        .maybeSingle();
         
-      // If user doesn't exist in the users table, create them
-      if (userError || !userData) {
+      if (userCheckError) {
+        console.error('Error checking user existence:', userCheckError);
+      }
+      
+      // If user doesn't exist in users table, create them with retry logic
+      if (!userData) {
         console.log('User not found in users table, creating entry');
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            id: profile.id,
-            first_name: profile.first_name || profile.email?.split('@')[0] || 'User',
-            last_name: profile.last_name || '',
-            active: true
-          });
-          
-        if (insertError) {
-          console.error('Error creating user record:', insertError);
-          toast.error("Failed to create user record");
+        
+        const userInsertData = {
+          id: profile.id,
+          first_name: profile.first_name || profile.email?.split('@')[0] || 'User',
+          last_name: profile.last_name || '',
+          active: true
+        };
+        
+        // Try up to 3 times to create the user
+        let userCreated = false;
+        let attempts = 0;
+        
+        while (!userCreated && attempts < 3) {
+          attempts++;
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert(userInsertData);
+            
+          if (!insertError) {
+            console.log('User record created successfully on attempt', attempts);
+            userCreated = true;
+          } else {
+            console.error(`Error creating user record (attempt ${attempts}):`, insertError);
+            // Wait a moment before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        
+        if (!userCreated) {
+          toast.error("Failed to create user record. Please try again later.");
           setIsSubmitting(false);
           return;
         }
