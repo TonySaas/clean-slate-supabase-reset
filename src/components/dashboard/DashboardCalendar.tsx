@@ -1,24 +1,23 @@
 
 import { useState } from 'react';
-import { format } from "date-fns"
-import { CalendarIcon } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card";
+import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 
 export function DashboardCalendar() {
-  const [date, setDate] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
+  // Update state type to match DateRange from react-day-picker
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: new Date(),
     to: undefined,
   });
+
+  // Handle calendar selection
+  const handleSelect = (range: DateRange | undefined) => {
+    setDate(range);
+  };
 
   return (
     <Card className="bg-white shadow-sm">
@@ -28,9 +27,9 @@ export function DashboardCalendar() {
           <Calendar
             mode="range"
             selected={date}
-            onSelect={setDate}
+            onSelect={handleSelect}
             numberOfMonths={1}
-            className="rounded-md border"
+            className="rounded-md border pointer-events-auto"
           />
           
           <div className="grid grid-cols-2 gap-4">
@@ -38,7 +37,7 @@ export function DashboardCalendar() {
               <Label htmlFor="startDate">Start Date</Label>
               <Input
                 id="startDate"
-                value={date.from ? format(date.from, "PPP") : ""}
+                value={date?.from ? format(date.from, "PPP") : ""}
                 onChange={(e) => {
                   const newDate = new Date(e.target.value);
                   if (!isNaN(newDate.getTime())) {
@@ -54,7 +53,7 @@ export function DashboardCalendar() {
               <Label htmlFor="endDate">End Date</Label>
               <Input
                 id="endDate"
-                value={date.to ? format(date.to, "PPP") : ""}
+                value={date?.to ? format(date.to, "PPP") : ""}
                 onChange={(e) => {
                   const newDate = new Date(e.target.value);
                   if (!isNaN(newDate.getTime())) {
