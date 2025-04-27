@@ -1,22 +1,64 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, UserRound, Briefcase } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { 
+  LogOut, UserRound, Bell, Settings, Home, HelpCircle, Store, Megaphone, FileText,
+  Calendar as CalendarIcon 
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Organization {
   id: string;
   name: string;
 }
 
+interface Activity {
+  id: string;
+  title: string;
+  time: string;
+  icon: JSX.Element;
+}
+
 export default function Dashboard() {
   const { organizationId: userOrgId, logout, isLoading, profile } = useAuth();
   const { organizationId } = useParams<{ organizationId: string }>();
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [date, setDate] = useState<Date>(new Date());
+  
+  // Sample activities - in a real app these would come from an API
+  const activities: Activity[] = [
+    {
+      id: '1',
+      title: 'Acme Supplies added a new offer',
+      time: '2 hours ago',
+      icon: <FileText className="h-4 w-4 text-blue-500" />
+    },
+    {
+      id: '2',
+      title: 'City Hardware joined the platform',
+      time: 'Yesterday',
+      icon: <Store className="h-4 w-4 text-green-500" />
+    },
+    {
+      id: '3',
+      title: 'Summer Sale campaign ends in 3 days',
+      time: 'Today',
+      icon: <Megaphone className="h-4 w-4 text-orange-500" />
+    }
+  ];
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -58,57 +100,188 @@ export default function Dashboard() {
 
   if (!organization) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-xl">Loading...</div>
       </div>
     );
   }
 
+  const firstName = profile?.first_name || 'User';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {organization.name} Dashboard
-          </h1>
-          <Button onClick={handleLogout} variant="outline" className="flex items-center gap-2">
-            <LogOut size={16} />
-            Sign out
-          </Button>
+    <div className="min-h-screen bg-[#f9f9f9]">
+      {/* Top Navigation Bar */}
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            {/* Organization logo placeholder */}
+            <div className="bg-blue-600 text-white font-bold h-8 w-8 rounded flex items-center justify-center">
+              {organization.name.charAt(0)}
+            </div>
+            <span className="font-semibold">{organization.name}</span>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            {/* Navigation Links */}
+            <nav className="hidden md:flex items-center gap-6">
+              <Link to={`/dashboard/${organizationId}`} className="text-sm text-gray-700 hover:text-blue-600 flex items-center gap-1">
+                <Home size={16} /> Home
+              </Link>
+              <Link to="#" className="text-sm text-gray-700 hover:text-blue-600 flex items-center gap-1">
+                <HelpCircle size={16} /> Support
+              </Link>
+              <div className="relative">
+                <Bell size={20} className="text-gray-700 hover:text-blue-600 cursor-pointer" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">2</span>
+              </div>
+              <Link to="#" className="text-sm text-gray-700 hover:text-blue-600">
+                <Settings size={20} />
+              </Link>
+            </nav>
+            
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 rounded-full focus:outline-none">
+                  <Avatar className="h-8 w-8 border border-gray-200">
+                    <AvatarImage src="" alt={profile?.first_name || "User"} />
+                    <AvatarFallback className="bg-blue-100 text-blue-800">
+                      {firstName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="flex items-center gap-2">
+                  <UserRound size={16} />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center gap-2">
+                  <Settings size={16} />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-red-600">
+                  <LogOut size={16} />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserRound className="h-6 w-6" />
-              Welcome, {profile?.first_name || 'User'}!
-            </CardTitle>
-            <CardDescription>
-              Here's your profile information
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">{profile?.job_title || 'No position set'}</span>
-              </div>
-              <div className="text-sm text-gray-600">
-                <strong>Email:</strong> {profile?.email}
-              </div>
-              <div className="text-sm text-gray-600">
-                <strong>Name:</strong> {profile?.first_name} {profile?.last_name}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600 mb-4">
-            Welcome to your organization's dashboard!
-          </p>
-          <div className="border-t pt-4 mt-4">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Welcome Section */}
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+          Welcome back, {firstName}!
+        </h1>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white shadow-sm hover:shadow transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Suppliers</span>
+                <UserRound className="h-5 w-5 text-blue-500" />
+              </div>
+              <p className="text-2xl font-bold mt-2">5</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm hover:shadow transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Active Offers</span>
+                <FileText className="h-5 w-5 text-green-500" />
+              </div>
+              <p className="text-2xl font-bold mt-2">12</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm hover:shadow transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Merchants</span>
+                <Store className="h-5 w-5 text-purple-500" />
+              </div>
+              <p className="text-2xl font-bold mt-2">8</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm hover:shadow transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Current Campaigns</span>
+                <Megaphone className="h-5 w-5 text-orange-500" />
+              </div>
+              <p className="text-2xl font-bold mt-2">2</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-4 mb-10">
+          <Button className="flex items-center gap-2" size="lg">
+            <Megaphone size={18} />
+            Create Campaign
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2 bg-white" size="lg">
+            <UserRound size={18} />
+            Add Supplier
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2 bg-white" size="lg">
+            <Store size={18} />
+            Add Merchant
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2 bg-white" size="lg">
+            <FileText size={18} />
+            View Offers
+          </Button>
+        </div>
+
+        {/* Two Column Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Calendar Column */}
+          <Card className="bg-white shadow-sm">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-medium mb-4">Campaign Calendar</h2>
+              <div className="border rounded-lg p-4 bg-white">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(newDate) => newDate && setDate(newDate)}
+                  className="rounded-md pointer-events-auto"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity Column */}
+          <Card className="bg-white shadow-sm">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-medium mb-4">Recent Activity</h2>
+              <div className="space-y-4">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="mt-0.5">{activity.icon}</div>
+                    <div>
+                      <p className="text-sm font-medium">{activity.title}</p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Testing Options - Keeping this from the original for functionality */}
+        <Card className="mt-8 bg-white shadow-sm">
+          <CardContent className="p-6">
             <h2 className="text-lg font-medium mb-2">Testing Options</h2>
             <div className="flex flex-col space-y-2">
               <Button variant="destructive" onClick={handleLogoutToLogin} className="flex items-center gap-2 w-fit">
@@ -116,8 +289,8 @@ export default function Dashboard() {
                 Sign out to test registration/login
               </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
