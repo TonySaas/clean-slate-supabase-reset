@@ -4,6 +4,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from './useUserProfile';
 import { useAuthState } from './useAuthState';
+import { toast } from 'sonner';
 
 export type UserRole = {
   id: number;
@@ -29,21 +30,48 @@ export const useSession = () => {
     console.log('Setting up auth state change listener');
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlock in Supabase auth
-          setTimeout(async () => {
-            const profile = await fetchOrCreateProfile(session);
-            updateAuthState(profile);
-          }, 0);
+          try {
+            // Use setTimeout to avoid potential deadlock in Supabase auth
+            setTimeout(async () => {
+              const userProfile = await fetchOrCreateProfile(session);
+              
+              // Log additional debugging information
+              console.log('User Profile:', userProfile);
+              console.log('Session User ID:', session.user.id);
+              console.log('User exists in auth.users:', await checkUserExists(session.user.id));
+              
+              updateAuthState(userProfile);
+            }, 0);
+          } catch (error) {
+            console.error('Error processing auth state change:', error);
+            toast.error('Error processing authentication');
+          }
         } else {
           console.log('No active session, clearing profile state');
           updateAuthState(null);
         }
       }
     );
+
+    // Function to check if user exists in auth.users table
+    const checkUserExists = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('auth.users')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('User existence check error:', error);
+        return false;
+      }
+
+      return !!data;
+    };
 
     // Check current session
     const checkSession = async () => {

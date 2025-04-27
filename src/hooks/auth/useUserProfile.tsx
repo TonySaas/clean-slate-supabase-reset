@@ -12,7 +12,28 @@ export const useUserProfile = () => {
     if (!session?.user) return null;
     
     try {
-      // First, check if user has a profile
+      console.log('Fetching or creating profile for user:', session.user.id);
+      
+      // First, verify user exists in users table
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', session.user.id);
+
+      if (count === 0) {
+        console.log('User does not exist in users table, creating...');
+        await supabase
+          .from('users')
+          .upsert({
+            id: session.user.id,
+            email: session.user.email,
+            first_name: session.user.user_metadata?.first_name,
+            last_name: session.user.user_metadata?.last_name,
+            phone: session.user.phone,
+          });
+      }
+
+      // Check if user profile exists
       const { data: userProfile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -24,9 +45,8 @@ export const useUserProfile = () => {
         
         if (profileError.code === 'PGRST116') {
           console.log('User profile not found, creating new profile');
-          const metadata = session.user.user_metadata || {};
           
-          // Get any organization - we need an organization ID
+          // Get any organization ID
           const { data: orgData, error: orgError } = await supabase
             .from('organizations')
             .select('id')
@@ -44,11 +64,10 @@ export const useUserProfile = () => {
             .upsert({
               id: session.user.id,
               email: session.user.email,
-              first_name: metadata.first_name,
-              last_name: metadata.last_name,
-              phone: metadata.phone,
-              job_title: metadata.job_title,
-              organization_id: metadata.organization_id || orgData?.id
+              first_name: session.user.user_metadata?.first_name,
+              last_name: session.user.user_metadata?.last_name,
+              phone: session.user.phone,
+              organization_id: session.user.user_metadata?.organization_id || orgData?.id
             })
             .select()
             .single();
@@ -60,28 +79,16 @@ export const useUserProfile = () => {
           }
           
           console.log('Created new profile:', newProfile);
-          
-          // Use the newly created profile
-          if (newProfile) {
-            const completeProfile = await addUserRolesToProfile(newProfile, session.user.id);
-            setProfile(completeProfile);
-            return completeProfile;
-          }
+          return newProfile;
         } else {
           toast.error('Error loading user profile');
           return null;
         }
       }
       
-      if (!userProfile || !userProfile.organization_id) {
-        console.error('User profile has no organization_id:', userProfile);
-        toast.error('Your account is not associated with an organization');
-        return null;
-      }
-      
-      const completeProfile = await addUserRolesToProfile(userProfile, session.user.id);
-      setProfile(completeProfile);
-      return completeProfile;
+      // Add roles to the profile
+      const roleData = await addUserRolesToProfile(userProfile, session.user.id);
+      return roleData;
       
     } catch (error) {
       console.error('Error processing authenticated user:', error);
