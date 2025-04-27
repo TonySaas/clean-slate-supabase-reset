@@ -30,20 +30,38 @@ export function CreateCampaign() {
       return;
     }
 
+    if (!profile || !profile.id) {
+      toast.error("You must be logged in to create a campaign");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      console.log("Creating campaign with data:", {
+        name: campaignName,
+        start_date: date.from.toISOString(),
+        end_date: date.to.toISOString(),
+        organization_id: organizationId,
+        created_by: profile.id,
+      });
+
+      const { data, error } = await supabase
         .from('campaigns')
         .insert({
           name: campaignName,
           start_date: date.from.toISOString(),
           end_date: date.to.toISOString(),
           organization_id: organizationId,
-          created_by: profile?.id,
-        });
+          created_by: profile.id,
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating campaign:', error);
+        throw error;
+      }
 
+      console.log('Campaign created successfully:', data);
       toast.success("Campaign created successfully");
       navigate(`/dashboard/${organizationId}`);
     } catch (error: any) {
