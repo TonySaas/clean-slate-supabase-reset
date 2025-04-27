@@ -42,7 +42,10 @@ export const useSession = () => {
               // Log additional debugging information
               console.log('User Profile:', userProfile);
               console.log('Session User ID:', session.user.id);
-              console.log('User exists in auth.users:', await checkUserExists(session.user.id));
+              
+              // Check if user exists in the users table instead of auth.users
+              const userExists = await checkUserExists(session.user.id);
+              console.log('User exists in public.users:', userExists);
               
               updateAuthState(userProfile);
             }, 0);
@@ -57,20 +60,25 @@ export const useSession = () => {
       }
     );
 
-    // Function to check if user exists in auth.users table
+    // Function to check if user exists in public.users table
     const checkUserExists = async (userId: string) => {
-      const { data, error } = await supabase
-        .from('auth.users')
-        .select('id')
-        .eq('id', userId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .single();
 
-      if (error) {
-        console.error('User existence check error:', error);
+        if (error) {
+          console.error('User existence check error:', error);
+          return false;
+        }
+
+        return !!data;
+      } catch (err) {
+        console.error('Error checking user existence:', err);
         return false;
       }
-
-      return !!data;
     };
 
     // Check current session
