@@ -11,7 +11,7 @@ import { useRegisterDialog } from '@/hooks/useRegisterDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Login() {
-  const { login, isLoading: authLoading, organizationId } = useAuth();
+  const { login, isLoading: authLoading, organizationId, profile, hasRole } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -40,21 +40,25 @@ export default function Login() {
     }
   }, [searchParams]);
 
-  // Use this effect to redirect only if user is fully authenticated with organization
-  // and we're not forcing the login page to show
+  // Use this effect to redirect users based on their role
   useEffect(() => {
-    if (organizationId && !authLoading && !forceShowLogin) {
-      console.log('User authenticated with organization, redirecting to dashboard:', organizationId);
-      navigate(`/dashboard/${organizationId}`, { replace: true });
+    if (profile && !authLoading && !forceShowLogin) {
+      if (hasRole('platform_admin')) {
+        navigate('/organizations', { replace: true });
+      } else if (hasRole('org_admin')) {
+        navigate('/organization-dashboard', { replace: true });
+      } else if (organizationId) {
+        navigate(`/dashboard/${organizationId}`, { replace: true });
+      }
     }
-  }, [organizationId, authLoading, navigate, forceShowLogin]);
+  }, [profile, authLoading, organizationId, navigate, forceShowLogin, hasRole]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
       setIsSubmitting(true);
       console.log('Login attempt for:', email);
       await login(email, password);
-      // The redirect will happen via the useEffect above once organizationId is set
+      // The redirect will happen via the useEffect above once profile is set
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error('Login failed', {
@@ -83,9 +87,12 @@ export default function Login() {
   };
 
   // If user is already authenticated and has an organization, and we're not forcing login display,
-  // redirect to dashboard
-  if (organizationId && !authLoading && !forceShowLogin) {
-    return <Navigate to={`/dashboard/${organizationId}`} replace />;
+  // the useEffect will handle the redirection
+  if (profile && !authLoading && !forceShowLogin) {
+    // Return loading while the useEffect handles the redirection
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>;
   }
 
   return (
@@ -98,7 +105,7 @@ export default function Login() {
         </div>
         
         {/* Show a "Force Logout" button if user is already authenticated but we're forcing login screen */}
-        {organizationId && forceShowLogin && (
+        {profile && forceShowLogin && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4">
             <p className="text-yellow-800 text-sm mb-2">
               You're already logged in but viewing the login page.
