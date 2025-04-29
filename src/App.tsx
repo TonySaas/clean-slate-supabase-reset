@@ -14,6 +14,7 @@ import SupplierPortal from "./pages/SupplierPortal";
 import RetailerPortal from "./pages/RetailerPortal";
 import ConsumerApp from "./pages/ConsumerApp";
 import OrganizationManagement from "./pages/OrganizationManagement";
+import CampaignOfferManagement from "./pages/CampaignOfferManagement";
 import MainLayout from "./layouts/MainLayout";
 import { useAuth } from "./hooks/useAuth";
 
@@ -70,6 +71,11 @@ const App = () => (
           <Route path="/dashboard/:organizationId/campaign/new" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/campaign/:campaignId/offers" element={
+            <ProtectedRoute>
+              <CampaignOfferManagement />
             </ProtectedRoute>
           } />
           <Route path="/organization-dashboard" element={

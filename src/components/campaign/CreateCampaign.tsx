@@ -1,192 +1,235 @@
 
-import { useState, useEffect } from 'react';
-import { format } from "date-fns";
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { DateRange } from "react-day-picker";
-import { CampaignCalendar } from "./CampaignCalendar";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
+import React from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { CampaignCalendar } from './CampaignCalendar';
 
-export function CreateCampaign() {
-  const { organizationId } = useParams();
+const formSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters'),
+  description: z.string().optional(),
+  start_date: z.date({
+    required_error: "Start date is required",
+  }),
+  end_date: z.date({
+    required_error: "End date is required",
+  }),
+}).refine(data => data.start_date <= data.end_date, {
+  message: "End date must be after start date",
+  path: ["end_date"],
+});
+
+export const CreateCampaign = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [campaignName, setCampaignName] = useState('');
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: undefined,
+  const [isCreating, setIsCreating] = React.useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      start_date: undefined,
+      end_date: undefined,
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!date?.from || !date?.to || !campaignName.trim()) {
-      toast.error("Please fill in all required fields");
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!profile?.organization_id) {
+      toast.error("No organization found for your account");
       return;
     }
 
-    if (!profile || !profile.id) {
-      toast.error("You must be logged in to create a campaign");
-      return;
-    }
-
-    setIsSubmitting(true);
     try {
-      console.log("Creating campaign with data:", {
-        name: campaignName,
-        start_date: date.from.toISOString(),
-        end_date: date.to.toISOString(),
-        organization_id: organizationId,
-        created_by: profile.id,
-      });
-
-      // First ensure user exists in users table
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', profile.id)
-        .maybeSingle();
-
-      // If user doesn't exist in users table, create them
-      if (!existingUser) {
-        console.log('Creating user record before campaign creation');
-        
-        const userInsertData = {
-          id: profile.id,
-          first_name: profile.first_name || '',
-          last_name: profile.last_name || '',
-          active: true
-        };
-        
-        const { error: userInsertError } = await supabase
-          .from('users')
-          .insert(userInsertData);
-          
-        if (userInsertError) {
-          console.error('Error creating user record:', userInsertError);
-          toast.error("Failed to setup user record. Please try again.");
-          setIsSubmitting(false);
-          return;
-        }
-        console.log('User record created successfully');
-      }
-
-      // Now create the campaign
-      const { data: campaignData, error: campaignError } = await supabase
+      setIsCreating(true);
+      
+      const { data, error } = await supabase
         .from('campaigns')
         .insert({
-          name: campaignName,
-          start_date: date.from.toISOString(),
-          end_date: date.to.toISOString(),
-          organization_id: organizationId,
+          name: values.name,
+          description: values.description || null,
+          start_date: values.start_date.toISOString().split('T')[0],
+          end_date: values.end_date.toISOString().split('T')[0],
+          organization_id: profile.organization_id,
           created_by: profile.id,
+          status: 'draft'
         })
-        .select();
-
-      if (campaignError) {
-        console.error('Error creating campaign:', campaignError);
-        throw campaignError;
-      }
-
-      console.log('Campaign created successfully:', campaignData);
-      toast.success("Campaign created successfully");
-      navigate(`/dashboard/${organizationId}`);
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      toast.success('Campaign created successfully!');
+      
+      // Navigate to the campaign offers page
+      navigate(`/dashboard/campaign/${data.id}/offers`);
+      
     } catch (error: any) {
       console.error('Error creating campaign:', error);
-      toast.error(error.message || "Failed to create campaign");
+      toast.error('Failed to create campaign', {
+        description: error.message
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Create Campaign</h1>
+    <div className="max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Create New Campaign</h1>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardContent className="pt-6">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Campaign Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Summer Sale 2025" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="start_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="end_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => 
+                                  date < new Date() || 
+                                  (form.getValues().start_date && date < form.getValues().start_date)
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter campaign description..."
+                            className="min-h-[120px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" disabled={isCreating} className="w-full">
+                    {isCreating ? "Creating Campaign..." : "Create Campaign"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <CampaignCalendar
+            selectedStartDate={form.watch('start_date')}
+            selectedEndDate={form.watch('end_date')}
+          />
+        </div>
       </div>
-
-      <form onSubmit={handleSubmit}>
-        <Card className="bg-white shadow-sm">
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="campaignName">Campaign Name</Label>
-                <Input 
-                  id="campaignName" 
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  placeholder="Enter campaign name"
-                  className="max-w-md"
-                  required
-                />
-              </div>
-
-              <div className="space-y-4">
-                <Label>Campaign Duration</Label>
-                <CampaignCalendar 
-                  selected={date}
-                  onSelect={setDate}
-                />
-                
-                <div className="grid grid-cols-2 gap-4 max-w-md">
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input
-                      id="startDate"
-                      value={date?.from ? format(date.from, "yyyy-MM-dd") : ""}
-                      onChange={(e) => {
-                        const newDate = new Date(e.target.value);
-                        if (!isNaN(newDate.getTime())) {
-                          setDate(prev => ({ ...prev, from: newDate }));
-                        }
-                      }}
-                      type="date"
-                      className="w-full"
-                      placeholder="YYYY-MM-DD"
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">Format: YYYY-MM-DD</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="endDate">End Date</Label>
-                    <Input
-                      id="endDate"
-                      value={date?.to ? format(date.to, "yyyy-MM-dd") : ""}
-                      onChange={(e) => {
-                        const newDate = new Date(e.target.value);
-                        if (!isNaN(newDate.getTime())) {
-                          setDate(prev => ({ ...prev, to: newDate }));
-                        }
-                      }}
-                      type="date"
-                      className="w-full"
-                      placeholder="YYYY-MM-DD"
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">Format: YYYY-MM-DD</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="w-full max-w-md"
-                >
-                  {isSubmitting ? "Creating Campaign..." : "Create Campaign"}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </form>
     </div>
   );
-}
+};

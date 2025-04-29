@@ -513,6 +513,7 @@ export type Database = {
       }
       offers: {
         Row: {
+          campaign_id: string | null
           category_id: string | null
           created_at: string | null
           created_by: string | null
@@ -521,17 +522,22 @@ export type Database = {
           end_date: string
           id: string
           offer_price: number
+          price_ex_vat: number | null
+          product_code: string | null
           product_name: string
           product_sku: string | null
           product_specifications: Json | null
           regular_price: number
+          rrp: number | null
           start_date: string
           status: string | null
           supplier_id: string | null
+          supplier_name: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          campaign_id?: string | null
           category_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -540,17 +546,22 @@ export type Database = {
           end_date: string
           id?: string
           offer_price: number
+          price_ex_vat?: number | null
+          product_code?: string | null
           product_name: string
           product_sku?: string | null
           product_specifications?: Json | null
           regular_price: number
+          rrp?: number | null
           start_date: string
           status?: string | null
           supplier_id?: string | null
+          supplier_name?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          campaign_id?: string | null
           category_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -559,17 +570,28 @@ export type Database = {
           end_date?: string
           id?: string
           offer_price?: number
+          price_ex_vat?: number | null
+          product_code?: string | null
           product_name?: string
           product_sku?: string | null
           product_specifications?: Json | null
           regular_price?: number
+          rrp?: number | null
           start_date?: string
           status?: string | null
           supplier_id?: string | null
+          supplier_name?: string | null
           title?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "offers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "offers_category_id_fkey"
             columns: ["category_id"]
