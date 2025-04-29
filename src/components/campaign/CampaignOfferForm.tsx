@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -77,8 +76,18 @@ export const CampaignOfferForm: React.FC<CampaignOfferFormProps> = ({
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     if (!campaign) return;
     
+    // Create a properly typed NewCampaignOffer object
     const offer: NewCampaignOffer = {
-      ...values,
+      title: values.title,
+      product_name: values.product_name,
+      product_code: values.product_code,
+      description: values.description,
+      offer_price: values.offer_price,
+      regular_price: values.regular_price,
+      price_ex_vat: values.price_ex_vat,
+      rrp: values.rrp,
+      supplier_name: values.supplier_name,
+      category_id: values.category_id,
       campaign_id: campaignId,
       start_date: campaign.start_date,
       end_date: campaign.end_date,

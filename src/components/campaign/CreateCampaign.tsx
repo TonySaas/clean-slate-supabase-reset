@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { CampaignCalendar } from './CampaignCalendar';
+import { DateRange } from 'react-day-picker';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
@@ -37,6 +38,7 @@ export const CreateCampaign = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [isCreating, setIsCreating] = React.useState(false);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,6 +49,32 @@ export const CreateCampaign = () => {
       end_date: undefined,
     },
   });
+
+  // Update the date range when the form fields change
+  React.useEffect(() => {
+    const startDate = form.watch('start_date');
+    const endDate = form.watch('end_date');
+    
+    if (startDate && endDate) {
+      setDateRange({
+        from: startDate,
+        to: endDate
+      });
+    }
+  }, [form.watch('start_date'), form.watch('end_date')]);
+
+  // Update form fields when date range changes
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    
+    if (range?.from) {
+      form.setValue('start_date', range.from);
+    }
+    
+    if (range?.to) {
+      form.setValue('end_date', range.to);
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!profile?.organization_id) {
@@ -225,8 +253,8 @@ export const CreateCampaign = () => {
 
         <div>
           <CampaignCalendar
-            selectedStartDate={form.watch('start_date')}
-            selectedEndDate={form.watch('end_date')}
+            selected={dateRange}
+            onSelect={handleDateRangeChange}
           />
         </div>
       </div>
