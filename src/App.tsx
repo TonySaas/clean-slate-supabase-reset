@@ -62,9 +62,21 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard/:organizationId" element={<Dashboard />} />
-          <Route path="/dashboard/:organizationId/campaign/new" element={<Dashboard />} />
-          <Route path="/organization-dashboard" element={<OrganizationDashboard />} />
+          <Route path="/dashboard/:organizationId" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/:organizationId/campaign/new" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/organization-dashboard" element={
+            <ProtectedRoute>
+              <OrganizationDashboard />
+            </ProtectedRoute>
+          } />
           <Route path="/" element={<MainLayout><Index /></MainLayout>} />
           <Route path="/supplier" element={<MainLayout><SupplierPortal /></MainLayout>} />
           <Route path="/retailer" element={<MainLayout><RetailerPortal /></MainLayout>} />

@@ -8,6 +8,7 @@ import { UIOrganization } from '@/components/organization/OrganizationList';
 import { OrganizationManagementHeader } from "./organization/OrganizationManagementHeader";
 import { OrganizationManagementLoading } from "./organization/OrganizationManagementLoading";
 import { OrganizationManagementError } from "./organization/OrganizationManagementError";
+import MainLayout from '@/layouts/MainLayout';
 
 const OrganizationManagement = () => {
   const [activeTab, setActiveTab] = useState("organizations");
@@ -54,24 +55,26 @@ const OrganizationManagement = () => {
   const selectedUiOrg = selectedOrganization ? mapToUIOrganization(selectedOrganization) : null;
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      <OrganizationManagementHeader />
-      <OrganizationStatsCards
-        organizations={organizations}
-        onCreateNew={handleCreateNew}
-      />
-      <OrganizationTabs
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        uiOrganizations={uiOrganizations}
-        handleOrganizationSelect={handleOrganizationSelect}
-        selectedOrganization={selectedUiOrg}
-        isEditMode={isEditMode}
-        onEditSave={handleEditSave}
-        onEditCancel={handleEditCancel}
-        onCreateNew={handleCreateNew}
-      />
-    </div>
+    <MainLayout>
+      <div className="container mx-auto max-w-6xl px-4 py-8">
+        <OrganizationManagementHeader />
+        <OrganizationStatsCards
+          organizations={organizations}
+          onCreateNew={handleCreateNew}
+        />
+        <OrganizationTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          uiOrganizations={uiOrganizations}
+          handleOrganizationSelect={handleOrganizationSelect}
+          selectedOrganization={selectedUiOrg}
+          isEditMode={isEditMode}
+          onEditSave={handleEditSave}
+          onEditCancel={handleEditCancel}
+          onCreateNew={handleCreateNew}
+        />
+      </div>
+    </MainLayout>
   );
 };
 
