@@ -17,6 +17,7 @@ import OrganizationManagement from "./pages/OrganizationManagement";
 import CampaignOfferManagement from "./pages/CampaignOfferManagement";
 import MainLayout from "./layouts/MainLayout";
 import { useAuth } from "./hooks/useAuth";
+import CampaignBulkUpload from "./pages/CampaignBulkUpload";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,8 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          
+          {/* Dashboard routes with organization ID */}
           <Route path="/dashboard/:organizationId" element={
             <ProtectedRoute>
               <Dashboard />
@@ -73,16 +76,36 @@ const App = () => (
               <Dashboard />
             </ProtectedRoute>
           } />
-          <Route path="/dashboard/campaign/:campaignId/offers" element={
-            <ProtectedRoute>
-              <CampaignOfferManagement />
-            </ProtectedRoute>
-          } />
+          
+          {/* Organization dashboard routes */}
           <Route path="/organization-dashboard" element={
             <ProtectedRoute>
               <OrganizationDashboard />
             </ProtectedRoute>
           } />
+          <Route path="/organization-dashboard/campaign/new" element={
+            <ProtectedRoute>
+              <OrganizationDashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* Campaign related routes */}
+          <Route path="/dashboard/campaign/:campaignId/offers" element={
+            <ProtectedRoute>
+              <CampaignOfferManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/campaign-offers" element={
+            <ProtectedRoute>
+              <CampaignOfferManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/campaign-bulk-upload" element={
+            <ProtectedRoute>
+              <CampaignBulkUpload />
+            </ProtectedRoute>
+          } />
+          
           <Route path="/" element={<MainLayout><Index /></MainLayout>} />
           <Route path="/supplier" element={<MainLayout><SupplierPortal /></MainLayout>} />
           <Route path="/retailer" element={<MainLayout><RetailerPortal /></MainLayout>} />

@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -10,11 +10,14 @@ import { DashboardKPICards } from '@/components/dashboard/DashboardKPICards';
 import { DashboardActionButtons } from '@/components/dashboard/DashboardActionButtons';
 import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
 import { DashboardActivity } from '@/components/dashboard/DashboardActivity';
+import { CreateCampaign } from '@/components/campaign/CreateCampaign';
 import { toast } from 'sonner';
 
 export default function OrganizationDashboard() {
   const { profile, isLoading, hasRole } = useAuth();
   const [organization, setOrganization] = useState<{ id: string; name: string } | null>(null);
+  const location = useLocation();
+  const isCreateCampaign = location.pathname.includes('/campaign/new');
   
   useEffect(() => {
     const fetchOrganizationData = async () => {
@@ -78,15 +81,21 @@ export default function OrganizationDashboard() {
         <div className="flex-1 flex flex-col">
           <DashboardTopNav organizationId={organization.id} />
           <main className="flex-1 px-8 py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">
-              Welcome back, {firstName}!
-            </h1>
-            <DashboardKPICards />
-            <DashboardActionButtons />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <DashboardCalendar />
-              <DashboardActivity />
-            </div>
+            {isCreateCampaign ? (
+              <CreateCampaign />
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900 mb-8">
+                  Welcome back, {firstName}!
+                </h1>
+                <DashboardKPICards />
+                <DashboardActionButtons />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <DashboardCalendar />
+                  <DashboardActivity />
+                </div>
+              </>
+            )}
           </main>
         </div>
       </div>
