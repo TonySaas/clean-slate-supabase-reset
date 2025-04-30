@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
@@ -124,7 +123,7 @@ export default function CampaignBulkUpload() {
                     Drag and drop your CSV or Excel file here, or click to select files
                   </p>
                   <label htmlFor="file-upload">
-                    <Button variant="outline" className="mb-2" as="span">
+                    <Button variant="outline" className="mb-2" onClick={() => document.getElementById('file-upload')?.click()}>
                       Select Files
                     </Button>
                     <input
