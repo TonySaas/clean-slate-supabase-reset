@@ -99,11 +99,11 @@ export default function CampaignBulkUpload() {
       <div className="min-h-screen flex w-full bg-[#f9f9f9]">
         <DashboardSidebar />
         <main className="flex-1 px-8 py-8">
-          <h1 className="text-2xl font-bold mb-6">Bulk Upload Offers</h1>
+          <h1 className="text-2xl font-bold mb-6">Bulk Upload Campaign Offers</h1>
           
           <Card>
             <CardHeader>
-              <CardTitle>Campaign Offers Bulk Upload</CardTitle>
+              <CardTitle>Campaign Offers Bulk Upload Tool</CardTitle>
             </CardHeader>
             <CardContent>
               {!file ? (
